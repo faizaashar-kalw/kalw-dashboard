@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KALW Audience Metrics — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef3fb;font-family:'Libre Franklin',system-ui,sans-serif;color:#1b1714;-webkit-font-smoothing:antialiased}
+  a{color:#2aa3e0;text-decoration:none}
+  a:hover{color:#1c7fb4;text-decoration:underline}
+  select,input,button,textarea{font-family:inherit}
+  button{cursor:pointer}
+  canvas{max-width:100%}
+  input:focus,textarea:focus,select:focus{border-color:#2aa3e0 !important;box-shadow:0 0 0 3px rgba(42,163,224,.14)}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:rgba(27,23,20,.16);border-radius:6px;border:3px solid #eef3fa}
+  @keyframes tfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  [data-metric-card] [data-info-pop]{opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .16s ease,transform .16s ease,visibility .16s}
+  [data-metric-card]:hover [data-info-pop]{opacity:1;visibility:visible;transform:translateY(0)}
+  .icon-link:hover{background:rgba(255,255,255,.85);color:#1b1714}
+
+  .bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+    background:linear-gradient(150deg,#eaf4fd 0%,#eef3fb 40%,#f6eefb 100%)}
+  .blob{position:absolute;border-radius:50%;filter:blur(70px)}
+  .blob1{width:520px;height:520px;left:-140px;top:-160px;opacity:.5;background:#7fc7ff}
+  .blob2{width:460px;height:460px;right:-120px;top:60px;opacity:.42;background:#b79bff}
+  .blob3{width:420px;height:420px;left:20%;bottom:-180px;opacity:.4;background:#7be0b0;filter:blur(72px)}
+  .blob4{width:360px;height:360px;right:18%;bottom:-140px;opacity:.34;background:#ff8fc7;filter:blur(72px)}
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+  <div class="blob blob4"></div>
+</div>
+<div id="root" style="position:relative;z-index:1"></div>
+
+<script>
+"use strict";
+var h = React.createElement;
+
+function pStyle(css){
+  var o = {};
+  (css || '').split(';').forEach(function(decl){
+    var i = decl.indexOf(':');
+    if (i < 0) return;
+    var prop = decl.slice(0, i).trim();
+    var val = decl.slice(i + 1).trim();
+    if (!prop || !val) return;
+    var key = prop.indexOf('--') === 0 ? prop : prop.replace(/-([a-z])/g, function(_, c){ return c.toUpperCase(); });
+    o[key] = val;
+  });
+  return o;
+}
+
+function Icon(props){
+  var kids = (props.paths || []).map(function(d, i){ return h('path', { key: i, d: d }); });
+  if (props.rects) props.rects.forEach(function(r, i){ kids.push(h('rect', Object.assign({ key: 'r' + i }, r))); });
+  if (props.circle) kids.push(h('circle', Object.assign({ key: 'c' }, props.circle)));
+  return h('svg', {
+    viewBox: '0 0 24 24', width: props.size || 21, height: props.size || 21,
+    fill: 'none', stroke: 'currentColor', strokeWidth: props.sw || 1.7,
+    strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true
+  }, kids);
+}
+
+var FIELD_STYLE = "width:100%;box-sizing:border-box;font:400 14px/1.3 'Libre Franklin',sans-serif;color:#1b1714;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:9px;padding:9px 11px;outline:none";
+var LABEL_STYLE = "display:block;font:600 11px/1.2 'Libre Franklin',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#6f675d;margin-bottom:6px";
+var SMALL_FIELD_STYLE = "width:100%;box-sizing:border-box;font:400 13px/1.3 'Libre Franklin',sans-serif;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:9px;padding:8px 10px;outline:none";
+var SMALL_LABEL_STYLE = "display:block;font:600 10px/1.2 'Libre Franklin',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#8a8175;margin-bottom:5px";
+
+function Field(props){
+  return h('div', null,
+    h('label', { style: pStyle(props.small ? SMALL_LABEL_STYLE : LABEL_STYLE) }, props.label, props.hint ? h('span', { style: { textTransform: 'none', letterSpacing: 0, color: '#9a9186' } }, ' ' + props.hint) : null),
+    h('input', {
+      type: props.type || 'text', value: props.value, onChange: props.onChange,
+      placeholder: props.placeholder, style: pStyle(props.small ? SMALL_FIELD_STYLE : FIELD_STYLE)
+    })
+  );
+}
+
+class App extends React.Component {
+  fileRef = React.createRef();
+
+  STORE_KEY = 'kalw_audience_metrics_v1';
+  ROSTER_KEY = 'kalw_show_roster_v1';
+  DEFAULT_SHOWS = ['Crosscurrents','Your Call','Uncuffed','Sights & Sounds','The Spot'];
+  trendWeeks = 13;
+
+  DATA_SEED = JSON.parse('{"quarters":[{"quarter":"Q1 2026","dateRangeStart":"2026-01-01","dateRangeEnd":"2026-03-31","broadcast":{"weeklyOverallReach":112100,"engagedAudience":6500,"timeEngagedMinutes":210},"streaming":{"totalCume":77952,"engagedAudienceSeconds":1574,"methods":{"Web Player":28.7,"Mobile App":40.06,"Smart Speaker":10.06,"Other":21.19},"devices":{"Mobile":55.95,"Desktop":24.19,"Smart Speaker":19.87,"Tablet":0}},"app":{"totalUsers":3049,"totalSessions":22.84},"website":{"totalVisitors":204443,"avgSessionsPerUserSeconds":59},"audioDownloads":[{"show":"Crosscurrents","totalDownloadsOverQuarter":42228,"avgDailyListeners":1342,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""},{"show":"Uncuffed","totalDownloadsOverQuarter":0,"avgDailyListeners":0,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""},{"show":"Your Call","totalDownloadsOverQuarter":0,"avgDailyListeners":0,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""},{"show":"Sights+Sounds","totalDownloadsOverQuarter":0,"avgDailyListeners":0,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""},{"show":"Your Legal Rights","totalDownloadsOverQuarter":0,"avgDailyListeners":0,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""},{"show":"State of the Bay","totalDownloadsOverQuarter":0,"avgDailyListeners":0,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""}],"social":{"facebook":[],"instagram":[]}},{"quarter":"Q2 2026","dateRangeStart":"2026-04-01","dateRangeEnd":"2026-06-30","broadcast":{"weeklyOverallReach":112100,"engagedAudience":6500,"timeEngagedMinutes":210},"streaming":{"totalCume":75880,"engagedAudienceSeconds":1630,"methods":{"Web Player":28.25,"Mobile App":40.22,"Smart Speaker":9.11,"Other":22.42},"devices":{"Mobile":55.5,"Desktop":24.81,"Smart Speaker":19.69,"Tablet":0}},"app":{"totalUsers":3158,"totalSessions":22.53},"website":{"totalVisitors":94891,"avgSessionsPerUserSeconds":52},"audioDownloads":[{"show":"Crosscurrents","totalDownloadsOverQuarter":40344,"avgDailyListeners":1270,"topPlayer":"Chrome","topEpisodeTitle":"“Baseball, a broken window, and an empathy lesson”","topEpisodeDate":"","topEpisodeUrl":"https://www.kalw.org/2026-04-16/baseball-a-broken-window-and-an-empathy-lesson","topEpisodeDownloads":1037,"notes":"","thumbnailUrl":""},{"show":"Uncuffed","totalDownloadsOverQuarter":18665,"avgDailyListeners":720,"topPlayer":"Unknown","topEpisodeTitle":"Get Ready for Uncuffed Season 5!","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":5497,"notes":"","thumbnailUrl":""},{"show":"Your Call","totalDownloadsOverQuarter":25618,"avgDailyListeners":1026,"topPlayer":"Apple Podcasts","topEpisodeTitle":"How are you voting in California\'s chaotic Governor\'s race?","topEpisodeDate":"","topEpisodeUrl":"https://www.kalw.org/show/your-call/2026-05-07/how-are-you-voting-in-californias-chaotic-governors-race","topEpisodeDownloads":624,"notes":"","thumbnailUrl":""},{"show":"Sights+Sounds","totalDownloadsOverQuarter":13633,"avgDailyListeners":793,"topPlayer":"NPR Apps & Skills","topEpisodeTitle":"Sights + Sounds Picks: Poet Adrienne Danyelle Oliver","topEpisodeDate":"","topEpisodeUrl":"https://www.kalw.org/show/sights-sounds/2026-05-28/sights-sounds-picks-poet-adrienne-danyelle-oliver","topEpisodeDownloads":1381,"notes":"","thumbnailUrl":""},{"show":"Your Legal Rights","totalDownloadsOverQuarter":2543,"avgDailyListeners":135,"topPlayer":"Web Browser","topEpisodeTitle":"When Speech Isn\'t Free","topEpisodeDate":"","topEpisodeUrl":"https://www.kalw.org/show/your-legal-rights/2026-06-10/when-speech-isnt-free","topEpisodeDownloads":197,"notes":"","thumbnailUrl":""},{"show":"State of the Bay","totalDownloadsOverQuarter":2588,"avgDailyListeners":157,"topPlayer":"Web Browser","topEpisodeTitle":"Super’ El Niño? / Great California Road Trips / Rain Gardens at Home","topEpisodeDate":"","topEpisodeUrl":"https://www.kalw.org/show/state-bay/2026-05-18/super-el-nino-great-california-road-trips-rain-gardens-at-home","topEpisodeDownloads":201,"notes":"","thumbnailUrl":""}],"social":{"facebook":[{"title":"How are you voting in California\'s chaotic Governor\'s race?","url":"https://www.facebook.com/KALWPublicMedia/posts/pfbid02d1gLp2A7ayuS6BdvGwojLYQymhttrpEPjatpVwj7MLSbY25wzussV9fr8HG7Ucjhl","showCategory":"Your Call","postType":"Photo","engagement":4879,"reach":84676,"threeSecViews":0,"views":0,"mainAccount":""},{"title":"This Earth Day, take in the sounds of nature.","url":"https://fb.watch/IkI4hrqImn/","showCategory":"Crosscurrents","postType":"Video (cross-posted from Instagram)","engagement":48,"reach":779,"threeSecViews":374,"views":0,"mainAccount":""},{"title":"Give it up for our latest Uncuffed graduates!","url":"https://www.facebook.com/KALWPublicMedia/","showCategory":"Uncuffed","postType":"Photo","engagement":45,"reach":3757,"threeSecViews":0,"views":0,"mainAccount":""},{"title":"The Next KALW On-Air Folk Festival Is This Saturday June 6th!!","url":"https://www.facebook.com/KALWPublicMedia/posts/pfbid0xzQ7qYo51z1uEuyCi9ucy8EeYMQG3ZKjTm1vhKUnYSmh5WSjZsj9nv8tV6YyAo4Dl","showCategory":"KALW Music","postType":"Photo","engagement":38,"reach":457,"threeSecViews":0,"views":0,"mainAccount":""},{"title":"Brittany Haas and Natalie Haas performing live on KALW June 6, 2026","url":"https://fb.watch/IkItos7No4/","showCategory":"KALW Music","postType":"Photo","engagement":35,"reach":706,"threeSecViews":0,"views":0,"mainAccount":""}],"instagram":[{"title":"Out in the open, beyond the noise of everyday life, the land has a way of revealing us. ‘American Storytelling’ is a collection of podcasts from across the NPR Network","url":"https://www.instagram.com/p/DZX9n_-Doea/","showCategory":"How Wild","postType":"Photo Carousel","engagement":1717,"reach":186384,"threeSecViews":0,"views":0,"mainAccount":"npr"},{"title":"Hundreds of people cheered as rainbow ribbons were cut at the @outmuseum in San Francisco\'s Chinatown last Friday","url":"https://www.instagram.com/p/DZFvMUHFMyl/","showCategory":"KALW News","postType":"Photo","engagement":1604,"reach":10338,"threeSecViews":0,"views":17798,"mainAccount":"kalwpublicmedia"},{"title":"had a fabulous time hanging out with @kalwpublicmedia\'s Members and BOUNCE host @erinlimsf in downtown San Francisco!","url":"https://www.instagram.com/p/DYfLPbelP_4/","showCategory":"KALW Live Events","postType":"Photo","engagement":1043,"reach":17550,"threeSecViews":0,"views":33473,"mainAccount":"kalwpublicmedia"},{"title":"Join our award-winning Uncuffed audio storytelling training program at California Institution for Women (CIW) in the Greater Los Angeles Area!","url":"https://www.instagram.com/p/DZNOcNyE39z/","showCategory":"Uncuffed","postType":"Photo","engagement":906,"reach":0,"threeSecViews":0,"views":16373,"mainAccount":"we.are.uncuffed"},{"title":"KALW is hiring a Music Promotions Manager to implement its KALW Presents music program","url":"https://www.instagram.com/p/DaBgwAnH2P7/","showCategory":"KALW Music","postType":"Photo","engagement":743,"reach":0,"threeSecViews":0,"views":14281,"mainAccount":"kalwmusic"}]}}]}');
+
+  loadSaved(){ try{ var raw = localStorage.getItem(this.STORE_KEY); if(!raw) return null; var d = JSON.parse(raw); return (d && Array.isArray(d.quarters)) ? d : null; }catch(e){ return null; } }
+  persist(data){ try{ localStorage.setItem(this.STORE_KEY, JSON.stringify(data)); }catch(e){} }
+  loadRoster(){
+    var list = [];
+    try{ var raw = localStorage.getItem(this.ROSTER_KEY); if(raw) list = JSON.parse(raw) || []; }catch(e){}
+    var fromData = [];
+    ((this._saved && this._saved.quarters) || []).forEach(function(q){ (q.audioDownloads || []).forEach(function(e){ if (e.show) fromData.push(e.show); }); });
+    var merged = [];
+    [].concat(list, fromData, this.DEFAULT_SHOWS).forEach(function(n){ n = (n || '').trim(); if (n && merged.indexOf(n) < 0) merged.push(n); });
+    return merged;
+  }
+  saveRoster(list){ try{ localStorage.setItem(this.ROSTER_KEY, JSON.stringify(list)); }catch(e){} }
+
+  constructor(props){
+    super(props);
+    this._saved = this.loadSaved();
+    this.state = {
+      view: 'dashboard',
+      data: this._saved || this.DATA_SEED,
+      qIndex: (this._saved || this.DATA_SEED).quarters.length - 1,
+      dataBadge: this._saved ? 'Saved on this device' : 'Published data',
+      toast: '',
+      draft: null,
+      editIndex: null,
+      roster: this.loadRoster(),
+      addShowIdx: null,
+      newShowName: ''
+    };
+    this.goDashboard = this.goDashboard.bind(this);
+    this.goRecord = this.goRecord.bind(this);
+    this.editQuarter = this.editQuarter.bind(this);
+    this.onSelectQuarter = this.onSelectQuarter.bind(this);
+    this.triggerLoad = this.triggerLoad.bind(this);
+    this.onFile = this.onFile.bind(this);
+    this.download = this.download.bind(this);
+    this.onNewShowName = this.onNewShowName.bind(this);
+    this.cancelNewShow = this.cancelNewShow.bind(this);
+    this.addShow = this.addShow.bind(this);
+    this.saveQuarter = this.saveQuarter.bind(this);
+  }
+
+  addShowToRoster(name){
+    name = (name || '').trim(); if (!name) return false;
+    this.setState(function(s){ if (s.roster.indexOf(name) >= 0) return null; var roster = s.roster.concat([name]); this.saveRoster(roster); return { roster: roster }; }.bind(this));
+    return true;
+  }
+  onShowSelect(i){ return function(e){ var v = e.target.value; if (v === '__add__'){ this.setState({ addShowIdx: i, newShowName: '' }); return; } this.setPath('shows.' + i + '.show', v); }.bind(this); }
+  onNewShowName(e){ this.setState({ newShowName: e.target.value }); }
+  confirmNewShow(i){ var name = (this.state.newShowName || '').trim(); if (!name){ this.setState({ addShowIdx: null }); return; } this.addShowToRoster(name); this.setPath('shows.' + i + '.show', name); this.setState({ addShowIdx: null, newShowName: '' }); }
+  cancelNewShow(){ this.setState({ addShowIdx: null, newShowName: '' }); }
+
+  fmtInt(n){ return Math.round(Number(n) || 0).toLocaleString('en-US'); }
+  fmtDec(n, d){ return (Number(n) || 0).toFixed(d); }
+  fmtDate(iso){ if (!iso) return '—'; var d = new Date(iso + 'T00:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+  daysBetween(a, b){ if (!a || !b) return 0; var da = new Date(a + 'T00:00:00'), db = new Date(b + 'T00:00:00'); return Math.round((db - da) / 86400000) + 1; }
+  minutesToHM(m){ m = Math.round(Number(m) || 0); var hh = Math.floor(m / 60), mm = m % 60; return hh + ':' + String(mm).padStart(2, '0'); }
+  secToMMSS(s){ s = Math.round(Number(s) || 0); var mm = Math.floor(s / 60), ss = s % 60; return mm + ':' + String(ss).padStart(2, '0'); }
+  calcWeeklyAvg(total, days){ return days > 0 ? (Number(total) || 0) / days * 7 : 0; }
+
+  delta(cur, prev){
+    if (prev == null || isNaN(prev) || Number(prev) === 0) return { hasDelta: false };
+    var pct = ((cur - prev) / prev) * 100;
+    var up = pct >= 0.05, down = pct <= -0.05;
+    return {
+      hasDelta: true,
+      deltaColor: up ? '#2f8f5b' : (down ? '#c0392b' : '#8a8175'),
+      deltaText: (up ? '▲ ' : down ? '▼ ' : '→ ') + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%'
+    };
+  }
+  showDelta(cur, prev){ var d = this.delta(cur, prev); return { delta: d.hasDelta ? d.deltaText : '', color: d.hasDelta ? d.deltaColor : '#8a8175' }; }
+
+  goDashboard(){ this.setState({ view: 'dashboard' }); }
+  goRecord(){ this.setState({ view: 'record', draft: this.blankDraft(), editIndex: null }); }
+  editQuarter(){ var q = this.state.data.quarters[this.state.qIndex]; if (!q) return; this.setState({ view: 'record', draft: this.quarterToDraft(q), editIndex: this.state.qIndex }); }
+  quarterToDraft(q){
+    var d = this.blankDraft();
+    d.quarter = q.quarter; d.dateRangeStart = q.dateRangeStart; d.dateRangeEnd = q.dateRangeEnd;
+    Object.assign(d.broadcast, q.broadcast || {});
+    d.streaming.totalCume = (q.streaming && q.streaming.totalCume) != null ? q.streaming.totalCume : '';
+    d.streaming.engagedAudienceSeconds = (q.streaming && q.streaming.engagedAudienceSeconds) != null ? q.streaming.engagedAudienceSeconds : '';
+    Object.keys(d.streaming.methods).forEach(function(k){ if (q.streaming && q.streaming.methods && q.streaming.methods[k] != null) d.streaming.methods[k] = q.streaming.methods[k]; });
+    Object.keys(d.streaming.devices).forEach(function(k){ if (q.streaming && q.streaming.devices && q.streaming.devices[k] != null) d.streaming.devices[k] = q.streaming.devices[k]; });
+    Object.assign(d.app, q.app || {}); Object.assign(d.website, q.website || {});
+    d.shows = (q.audioDownloads || []).map(function(e){ return Object.assign(this.blankShow(), e); }.bind(this));
+    if (!d.shows.length) d.shows = [this.blankShow()];
+    d.facebookPosts = ((q.social && q.social.facebook) || []).map(function(p){ return Object.assign(this.blankPost(), p); }.bind(this));
+    if (!d.facebookPosts.length) d.facebookPosts = [this.blankPost()];
+    d.instagramPosts = ((q.social && q.social.instagram) || []).map(function(p){ return Object.assign(this.blankPost(), p); }.bind(this));
+    if (!d.instagramPosts.length) d.instagramPosts = [this.blankPost()];
+    return d;
+  }
+  onSelectQuarter(e){ this.setState({ qIndex: Number(e.target.value) }); }
+  triggerLoad(){ if (this.fileRef.current) this.fileRef.current.click(); }
+  toastMsg(m){ this.setState({ toast: m }); clearTimeout(this._t); this._t = setTimeout(function(){ this.setState({ toast: '' }); }.bind(this), 2800); }
+
+  METHOD_KEYS = ['Web Player','Mobile App','Smart Speaker','Other'];
+  DEVICE_KEYS = ['Mobile','Desktop','Smart Speaker','Tablet'];
+  N(v){ var n = Number(v); return isNaN(n) ? 0 : n; }
+
+  CHANNELS_COLS = ['Quarter','Start Date','End Date','Broadcast Weekly Overall Reach','Broadcast Engaged Audience','Broadcast Time Engaged (min)','Streaming Total Cume','Streaming Avg Time Engaged (sec)','App Total Users','App Total Sessions','Website Total Users','Website Avg Session Duration (sec)','Method % Web Player','Method % Mobile App','Method % Smart Speaker','Method % Other','Device % Mobile','Device % Desktop','Device % Smart Speaker','Device % Tablet'];
+  AUDIO_COLS = ['Quarter','Show','Total Downloads Over Quarter','Avg. Weekly Unique Listeners','Top Audio Download Player','Top Episode Title','Top Episode Date Released','Top Episode URL','Top Episode # of Downloads','Notes'];
+  SOCIAL_COLS = ['Quarter','Platform','Post Ranking','Post Title','Post URL','Show / Category','Engagement','Reach','3-Second Views','Post Type','Main Posting Account'];
+
+  dataToSheets(){
+    var self = this;
+    var channels = [this.CHANNELS_COLS.slice()];
+    this.state.data.quarters.forEach(function(q){
+      var row = [ q.quarter, q.dateRangeStart, q.dateRangeEnd,
+        (q.broadcast && q.broadcast.weeklyOverallReach) || 0, (q.broadcast && q.broadcast.engagedAudience) || 0, (q.broadcast && q.broadcast.timeEngagedMinutes) || 0,
+        (q.streaming && q.streaming.totalCume) || 0, (q.streaming && q.streaming.engagedAudienceSeconds) || 0,
+        (q.app && q.app.totalUsers) || 0, (q.app && q.app.totalSessions) || 0,
+        (q.website && q.website.totalVisitors) || 0, (q.website && q.website.avgSessionsPerUserSeconds) || 0 ];
+      self.METHOD_KEYS.forEach(function(k){ row.push((q.streaming && q.streaming.methods && q.streaming.methods[k]) || 0); });
+      self.DEVICE_KEYS.forEach(function(k){ row.push((q.streaming && q.streaming.devices && q.streaming.devices[k]) || 0); });
+      channels.push(row);
+    });
+
+    var audio = [this.AUDIO_COLS.slice()];
+    var qWithShows = this.state.data.quarters.filter(function(q){ return (q.audioDownloads || []).length; });
+    qWithShows.forEach(function(q, gi){
+      (q.audioDownloads || []).forEach(function(ep){
+        audio.push([ q.quarter, ep.show, ep.totalDownloadsOverQuarter || 0, ep.avgDailyListeners || 0,
+          ep.topPlayer || '', ep.topEpisodeTitle || '', ep.topEpisodeDate || '', ep.topEpisodeUrl || '',
+          ep.topEpisodeDownloads || 0, ep.notes || '' ]);
+      });
+      if (gi < qWithShows.length - 1) audio.push([]);
+    });
+
+    var social = [this.SOCIAL_COLS.slice()];
+    var groups = [];
+    this.state.data.quarters.forEach(function(q){
+      ['facebook','instagram'].forEach(function(plat){
+        var posts = (q.social && q.social[plat]) || [];
+        if (posts.length) groups.push({ q: q, plat: plat, posts: posts });
+      });
+    });
+    groups.forEach(function(g, gi){
+      var isFb = g.plat === 'facebook';
+      g.posts.forEach(function(p, i){
+        social.push([ g.q.quarter, isFb ? 'Facebook' : 'Instagram', i + 1, p.title || '', p.url || '',
+          p.showCategory || '', p.engagement || 0, p.reach || 0,
+          isFb ? (p.threeSecViews || 0) : '', p.postType || '', isFb ? '' : (p.mainAccount || '') ]);
+      });
+      if (gi < groups.length - 1) social.push([]);
+    });
+
+    return { channels: channels, audio: audio, social: social };
+  }
+
+  sheetsToData(qRows, showRows, socialRows){
+    var self = this;
+    var showsByQ = {};
+    (showRows || []).forEach(function(r){
+      var qk = (r['Quarter'] || '').toString().trim(); if (!qk || !(r['Show'] || '').toString().trim()) return;
+      (showsByQ[qk] = showsByQ[qk] || []).push({
+        show: r['Show'].toString(),
+        totalDownloadsOverQuarter: self.N(r['Total Downloads Over Quarter']),
+        avgDailyListeners: self.N(r['Avg. Weekly Unique Listeners'] || r['Avg Weekly Unique Listeners'] || r['Avg Daily Unique Listeners']),
+        topPlayer: (r['Top Audio Download Player'] || '').toString(),
+        topEpisodeTitle: (r['Top Episode Title'] || 'Untitled episode').toString(),
+        topEpisodeDate: (r['Top Episode Date Released'] || '').toString(),
+        topEpisodeUrl: (r['Top Episode URL'] || '#').toString(),
+        topEpisodeDownloads: self.N(r['Top Episode # of Downloads'] || r['Top Episode Downloads'] || r['Ep. Downloads']),
+        notes: (r['Notes'] || '').toString(), thumbnailUrl: ''
+      });
+    });
+    var socialByQ = {};
+    (socialRows || []).forEach(function(r){
+      var qk = (r['Quarter'] || '').toString().trim(); var plat = (r['Platform'] || '').toString().trim().toLowerCase();
+      if (!qk || !(r['Post Title'] || '').toString().trim()) return;
+      var key = plat.indexOf('insta') >= 0 ? 'instagram' : 'facebook';
+      var bucket = (socialByQ[qk] = socialByQ[qk] || { facebook: [], instagram: [] });
+      bucket[key].push({ title: r['Post Title'].toString(), url: (r['Post URL'] || '').toString(), showCategory: (r['Show / Category'] || '').toString(), postType: (r['Post Type'] || '').toString(), engagement: self.N(r['Engagement']), reach: self.N(r['Reach']), threeSecViews: self.N(r['3-Second Views']), views: self.N(r['Views']), mainAccount: (r['Main Posting Account'] || '').toString() });
+    });
+    var quarters = (qRows || []).filter(function(r){ return (r['Quarter'] || '').toString().trim(); }).map(function(r){
+      var qk = r['Quarter'].toString().trim();
+      var methods = {}, devices = {};
+      self.METHOD_KEYS.forEach(function(k){ methods[k] = self.N(r['Method % ' + k]); });
+      self.DEVICE_KEYS.forEach(function(k){ devices[k] = self.N(r['Device % ' + k]); });
+      return {
+        quarter: qk,
+        dateRangeStart: self.excelDate(r['Start Date']),
+        dateRangeEnd: self.excelDate(r['End Date']),
+        broadcast: { weeklyOverallReach: self.N(r['Broadcast Weekly Overall Reach']), engagedAudience: self.N(r['Broadcast Engaged Audience']), timeEngagedMinutes: self.N(r['Broadcast Time Engaged (min)']) },
+        streaming: { totalCume: self.N(r['Streaming Total Cume']), engagedAudienceSeconds: self.N(r['Streaming Avg Time Engaged (sec)']), methods: methods, devices: devices },
+        app: { totalUsers: self.N(r['App Total Users']), totalSessions: self.N(r['App Total Sessions']) },
+        website: { totalVisitors: self.N(r['Website Total Users']), avgSessionsPerUserSeconds: self.N(r['Website Avg Session Duration (sec)']) },
+        audioDownloads: showsByQ[qk] || [],
+        social: socialByQ[qk] || { facebook: [], instagram: [] }
+      };
+    });
+    return { quarters: quarters };
+  }
+
+  excelDate(v){
+    if (v == null || v === '') return '';
+    if (typeof v === 'number' && window.XLSX){ var d = XLSX.SSF.parse_date_code(v); if (d) return d.y + '-' + String(d.m).padStart(2, '0') + '-' + String(d.d).padStart(2, '0'); }
+    var s = v.toString().trim();
+    var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if (m){ var y = m[3].length === 2 ? '20' + m[3] : m[3]; return y + '-' + m[1].padStart(2, '0') + '-' + m[2].padStart(2, '0'); }
+    return s;
+  }
+
+  quarterSortKey(label){ var m = (label || '').match(/Q([1-4])\s*(\d{4})/i); if (m) return Number(m[2]) * 10 + Number(m[1]); return 0; }
+  mergeQuarters(existing, incoming){
+    var self = this;
+    var out = JSON.parse(JSON.stringify(existing && Array.isArray(existing.quarters) ? existing : { quarters: [] }));
+    (incoming.quarters || []).forEach(function(q){
+      var idx = out.quarters.findIndex(function(e){ return (e.quarter || '').trim().toLowerCase() === (q.quarter || '').trim().toLowerCase(); });
+      if (idx >= 0) out.quarters[idx] = q; else out.quarters.push(q);
+    });
+    out.quarters.sort(function(a, b){ var ka = self.quarterSortKey(a.quarter), kb = self.quarterSortKey(b.quarter); if (ka && kb && ka !== kb) return ka - kb; return (a.dateRangeStart || '').localeCompare(b.dateRangeStart || ''); });
+    return out;
+  }
+
+  onFile(e){
+    var self = this;
+    var f = e.target.files && e.target.files[0]; if (!f) return;
+    var isJson = /\.json$/i.test(f.name);
+    var r = new FileReader();
+    r.onload = function(){
+      try{
+        var data;
+        if (isJson){
+          data = JSON.parse(r.result);
+          if (!data || !Array.isArray(data.quarters)) throw new Error('bad');
+        } else {
+          if (!window.XLSX) throw new Error('xlsx not loaded');
+          var wb = XLSX.read(r.result, { type: 'array' });
+          var pick = function(names){ for (var i = 0; i < names.length; i++){ if (wb.Sheets[names[i]]) return XLSX.utils.sheet_to_json(wb.Sheets[names[i]], { defval: '' }); } return []; };
+          var qRows = pick(['Channels','Quarters','Broadcast, Streaming, App, Website']);
+          var showRows = pick(['Audio Downloads','Show Audio Downloads','Shows']);
+          var socialRows = pick(['Social Media','Social']);
+          data = self.sheetsToData(qRows, showRows, socialRows);
+          if (!data.quarters.length) throw new Error('no quarters');
+        }
+        var merged = self.mergeQuarters(self.state.data, data);
+        self.persist(merged);
+        var roster = self.state.roster.slice();
+        merged.quarters.forEach(function(q){ (q.audioDownloads || []).forEach(function(ep){ var n = (ep.show || '').trim(); if (n && roster.indexOf(n) < 0) roster.push(n); }); });
+        self.saveRoster(roster);
+        var incoming = data.quarters.map(function(q){ return q.quarter; });
+        var target = merged.quarters.findIndex(function(q){ return q.quarter === incoming[incoming.length - 1]; });
+        self.setState({ data: merged, roster: roster, qIndex: target >= 0 ? target : merged.quarters.length - 1, dataBadge: 'Saved on this device', view: 'dashboard' });
+        self.toastMsg('Imported ' + f.name + ' — updated ' + incoming.join(', '));
+      } catch (err){ self.toastMsg("Couldn't read that file — use an .xlsx exported from here (or valid JSON)."); }
+    };
+    if (isJson) r.readAsText(f); else r.readAsArrayBuffer(f);
+    e.target.value = '';
+  }
+
+  download(){
+    if (!window.XLSX){ this.toastMsg('Spreadsheet engine still loading — try again in a moment.'); return; }
+    var sheets = this.dataToSheets();
+    var wb = XLSX.utils.book_new();
+    var add = function(name, aoa){ var ws = XLSX.utils.aoa_to_sheet(aoa); XLSX.utils.book_append_sheet(wb, ws, name); };
+    add('Channels', sheets.channels);
+    add('Audio Downloads', sheets.audio);
+    add('Social Media', sheets.social);
+    XLSX.writeFile(wb, 'kalw-audience-metrics.xlsx');
+    this.toastMsg('Exported kalw-audience-metrics.xlsx');
+  }
+
+  blankShow(){ return { show: '', totalDownloadsOverQuarter: '', avgDailyListeners: '', topPlayer: '', topEpisodeTitle: '', topEpisodeUrl: '', topEpisodeDownloads: '', notes: '', thumbnailUrl: '' }; }
+  blankPost(){ return { title: '', url: '', showCategory: '', postType: '', engagement: '', reach: '', threeSecViews: '', views: '', mainAccount: '' }; }
+  blankDraft(){
+    return {
+      quarter: '', dateRangeStart: '', dateRangeEnd: '',
+      broadcast: { weeklyOverallReach: '', engagedAudience: '', timeEngagedMinutes: '' },
+      streaming: { totalCume: '', engagedAudienceSeconds: '',
+        methods: { 'Web Player': '', 'Mobile App': '', 'Smart Speaker': '', 'Other': '' },
+        devices: { 'Mobile': '', 'Desktop': '', 'Smart Speaker': '', 'Tablet': '' } },
+      app: { totalUsers: '', totalSessions: '' },
+      website: { totalVisitors: '', avgSessionsPerUserSeconds: '' },
+      shows: [ this.blankShow() ],
+      facebookPosts: [ this.blankPost() ],
+      instagramPosts: [ this.blankPost() ]
+    };
+  }
+  setPath(path, val){
+    this.setState(function(s){
+      var d = JSON.parse(JSON.stringify(s.draft));
+      var k = path.split('.'); var o = d;
+      for (var i = 0; i < k.length - 1; i++) o = o[k[i]];
+      o[k[k.length - 1]] = val;
+      return { draft: d };
+    });
+  }
+  hmParts(total){ var T = Number(total) || 0; if (!T && (total === '' || total == null)) return { a: '', b: '' }; return { a: Math.floor(T / 60), b: T % 60 }; }
+  getPath(path){ var k = path.split('.'); var o = this.state.draft; for (var i = 0; i < k.length; i++){ if (o == null) return undefined; o = o[k[i]]; } return o; }
+  mkTime(path, part){ return function(e){ var v = Number(e.target.value) || 0; var cur = Number(this.getPath(path)) || 0; var a = part === 'a' ? v : Math.floor(cur / 60); var b = part === 'b' ? v : cur % 60; this.setPath(path, a * 60 + b); }.bind(this); }
+  mk(path){ return function(e){ this.setPath(path, e.target.value); }.bind(this); }
+  addShow(){ this.setState(function(s){ var d = JSON.parse(JSON.stringify(s.draft)); d.shows.push(this.blankShow()); return { draft: d }; }.bind(this)); }
+  removeShow(i){ this.setState(function(s){ var d = JSON.parse(JSON.stringify(s.draft)); d.shows.splice(i, 1); if (!d.shows.length) d.shows.push(this.blankShow()); return { draft: d }; }.bind(this)); }
+  postKey(platform){ return platform === 'instagram' ? 'instagramPosts' : 'facebookPosts'; }
+  addPost(platform){ var key = this.postKey(platform); this.setState(function(s){ var d = JSON.parse(JSON.stringify(s.draft)); d[key].push(this.blankPost()); return { draft: d }; }.bind(this)); }
+  removePost(platform, i){ var key = this.postKey(platform); this.setState(function(s){ var d = JSON.parse(JSON.stringify(s.draft)); d[key].splice(i, 1); if (!d[key].length) d[key].push(this.blankPost()); return { draft: d }; }.bind(this)); }
+
+  saveQuarter(){
+    var d = this.state.draft;
+    if (!d.quarter || !d.dateRangeStart || !d.dateRangeEnd){ this.toastMsg('Enter a quarter label and both dates first.'); return; }
+    var N = function(v){ return Number(v) || 0; };
+    var q = {
+      quarter: d.quarter, dateRangeStart: d.dateRangeStart, dateRangeEnd: d.dateRangeEnd,
+      broadcast: { weeklyOverallReach: N(d.broadcast.weeklyOverallReach), engagedAudience: N(d.broadcast.engagedAudience), timeEngagedMinutes: N(d.broadcast.timeEngagedMinutes) },
+      streaming: { totalCume: N(d.streaming.totalCume), engagedAudienceSeconds: N(d.streaming.engagedAudienceSeconds),
+        methods: Object.fromEntries(Object.entries(d.streaming.methods).map(function(e){ return [e[0], N(e[1])]; })),
+        devices: Object.fromEntries(Object.entries(d.streaming.devices).map(function(e){ return [e[0], N(e[1])]; })) },
+      app: { totalUsers: N(d.app.totalUsers), totalSessions: N(d.app.totalSessions) },
+      website: { totalVisitors: N(d.website.totalVisitors), avgSessionsPerUserSeconds: N(d.website.avgSessionsPerUserSeconds) },
+      audioDownloads: d.shows.filter(function(s){ return s.show.trim(); }).map(function(s){ return { show: s.show, totalDownloadsOverQuarter: N(s.totalDownloadsOverQuarter), avgDailyListeners: N(s.avgDailyListeners), topPlayer: s.topPlayer || '', topEpisodeTitle: s.topEpisodeTitle || 'Untitled episode', topEpisodeUrl: s.topEpisodeUrl || '#', topEpisodeDownloads: N(s.topEpisodeDownloads), notes: s.notes || '', thumbnailUrl: s.thumbnailUrl || '' }; }),
+      social: {
+        facebook: (d.facebookPosts || []).filter(function(p){ return (p.title || '').trim(); }).map(function(p){ return { title: p.title, url: p.url || '', showCategory: p.showCategory || '', postType: p.postType || '', engagement: N(p.engagement), reach: N(p.reach), threeSecViews: N(p.threeSecViews) }; }),
+        instagram: (d.instagramPosts || []).filter(function(p){ return (p.title || '').trim(); }).map(function(p){ return { title: p.title, url: p.url || '', showCategory: p.showCategory || '', postType: p.postType || '', engagement: N(p.engagement), reach: N(p.reach), views: N(p.views), mainAccount: p.mainAccount || '' }; })
+      }
+    };
+    var editing = this.state.editIndex != null && this.state.data.quarters[this.state.editIndex];
+    this.setState(function(s){
+      var data = JSON.parse(JSON.stringify(s.data)); var idx;
+      if (s.editIndex != null && data.quarters[s.editIndex]){ data.quarters[s.editIndex] = q; idx = s.editIndex; }
+      else { data.quarters.push(q); idx = data.quarters.length - 1; }
+      this.persist(data);
+      return { data: data, qIndex: idx, dataBadge: 'Saved on this device', view: 'dashboard', draft: null, editIndex: null };
+    }.bind(this));
+    this.toastMsg((editing ? 'Updated ' : 'Saved ') + q.quarter + ' on this device');
+  }
+
+  prep(el){
+    var wrap = el.parentElement; var w = wrap.clientWidth, hh = wrap.clientHeight;
+    if (!w || !hh) return null;
+    var dpr = window.devicePixelRatio || 1;
+    el.width = Math.round(w * dpr); el.height = Math.round(hh * dpr);
+    el.style.width = w + 'px'; el.style.height = hh + 'px';
+    var ctx = el.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, hh);
+    return { ctx: ctx, w: w, h: hh };
+  }
+  dough(id, values, colors){
+    var el = document.getElementById(id); if (!el) return; var p = this.prep(el); if (!p) return;
+    var ctx = p.ctx, w = p.w, hh = p.h;
+    var total = values.reduce(function(a, b){ return a + (Number(b) || 0); }, 0);
+    var cx = w / 2, cy = hh / 2, R = Math.min(w, hh) / 2 - 4, r = R * 0.64;
+    if (total <= 0){ ctx.fillStyle = '#9a9186'; ctx.font = "12px 'Libre Franklin',sans-serif"; ctx.textAlign = 'center'; ctx.fillText('No data', cx, cy); return; }
+    var start = -Math.PI / 2;
+    values.forEach(function(v, i){
+      var ang = (Number(v) || 0) / total * Math.PI * 2; var end = start + ang;
+      ctx.beginPath(); ctx.arc(cx, cy, R, start, end); ctx.arc(cx, cy, r, end, start, true); ctx.closePath();
+      ctx.fillStyle = colors[i % colors.length]; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = '#f3f7fc'; ctx.stroke(); start = end;
+    });
+  }
+  drawCharts(){
+    if (this.state.view !== 'dashboard' || !this._cd) return;
+    var cd = this._cd;
+    requestAnimationFrame(function(){
+      this.dough('methodsChart', cd.methods.values, cd.pie);
+      this.dough('devicesChart', cd.devices.values, cd.pie);
+      this.dough('downloadsShareChart', cd.downloadsShare.values, cd.pie);
+    }.bind(this));
+  }
+  componentDidMount(){ this._onResize = function(){ this.drawCharts(); }.bind(this); window.addEventListener('resize', this._onResize); this.drawCharts(); }
+  componentDidUpdate(){ this.drawCharts(); }
+  componentWillUnmount(){ if (this._onResize) window.removeEventListener('resize', this._onResize); }
+
+  METRIC_INFO = {
+    'Weekly Overall Reach': "People who tune in to 91.7 for at least five minutes in an average week.",
+    'Engaged Audience': "People tuned in at any given moment, in 15-minute increments.",
+    'Time Engaged (hr:min)': "Time the average listener spends with 91.7 each week.",
+    'Weekly Avg. Cume': "People who press 'play' on the live stream in an average week.",
+    'Avg. Time Engaged (min:sec)': "How long a typical streaming session lasts.",
+    'Avg. Weekly Users': "Distinct people who visited in an average week — each counted once.",
+    'Sessions / User': "Visits the average user makes. Above one means they come back.",
+    'Avg. Session Duration': "How long a typical visit lasts."
+  };
+  stat(label, value, cur, prev, calc){
+    var d = this.delta(cur, prev);
+    var info = (this.METRIC_INFO[label] || '').trim();
+    return { label: label, value: value, calc: !!calc, hasDelta: d.hasDelta, deltaText: d.deltaText || '', deltaColor: d.deltaColor || '#8a8175', info: info, hasInfo: !!info };
+  }
+
+  getViewData(){
+    var s = this.state;
+    var hasData = s.data && s.data.quarters.length > 0;
+    var isDash = s.view === 'dashboard';
+    var base = {
+      showDashboard: isDash && hasData,
+      showEmpty: isDash && !hasData,
+      showRecord: s.view === 'record',
+      quarterOptions: (s.data && s.data.quarters || []).map(function(q, i){ return { value: i, label: q.quarter }; })
+    };
+    if (!(isDash && hasData)) return base;
+
+    var q = s.data.quarters[s.qIndex];
+    var prev = s.data.quarters[s.qIndex - 1] || null;
+    var days = this.daysBetween(q.dateRangeStart, q.dateRangeEnd);
+    var pDays = prev ? this.daysBetween(prev.dateRangeStart, prev.dateRangeEnd) : 0;
+
+    var bStats = [
+      this.stat('Weekly Overall Reach', this.fmtInt(q.broadcast.weeklyOverallReach), q.broadcast.weeklyOverallReach, prev && prev.broadcast.weeklyOverallReach),
+      this.stat('Engaged Audience', this.fmtInt(q.broadcast.engagedAudience), q.broadcast.engagedAudience, prev && prev.broadcast.engagedAudience),
+      this.stat('Time Engaged (hr:min)', this.minutesToHM(q.broadcast.timeEngagedMinutes), q.broadcast.timeEngagedMinutes, prev && prev.broadcast.timeEngagedMinutes)
+    ];
+    var cume = this.calcWeeklyAvg(q.streaming.totalCume, days);
+    var pCume = prev ? this.calcWeeklyAvg(prev.streaming.totalCume, pDays) : undefined;
+    var sStats = [
+      this.stat('Weekly Avg. Cume', this.fmtInt(cume), cume, pCume, true),
+      this.stat('Avg. Time Engaged (min:sec)', this.secToMMSS(q.streaming.engagedAudienceSeconds), q.streaming.engagedAudienceSeconds, prev && prev.streaming.engagedAudienceSeconds)
+    ];
+    var aUsers = this.calcWeeklyAvg(q.app.totalUsers, days);
+    var pAUsers = prev ? this.calcWeeklyAvg(prev.app.totalUsers, pDays) : undefined;
+    var perUser = function(a){ var u = Number((a && a.totalUsers) || 0), s2 = Number((a && a.totalSessions) || 0); if (!s2) return 0; return s2 < u ? s2 : (u ? s2 / u : 0); };
+    var spu = perUser(q.app);
+    var pSpu = prev ? perUser(prev.app) : undefined;
+    var aStats = [
+      this.stat('Avg. Weekly Users', this.fmtInt(aUsers), aUsers, pAUsers, true),
+      this.stat('Sessions / User', this.fmtDec(spu, 2), spu, pSpu, true)
+    ];
+    var wUsers = this.calcWeeklyAvg(q.website.totalVisitors, days);
+    var pWUsers = prev ? this.calcWeeklyAvg(prev.website.totalVisitors, pDays) : undefined;
+    var wStats = [
+      this.stat('Avg. Weekly Users', this.fmtInt(wUsers), wUsers, pWUsers, true),
+      this.stat('Avg. Session Duration', this.secToMMSS(q.website.avgSessionsPerUserSeconds), q.website.avgSessionsPerUserSeconds, prev && prev.website.avgSessionsPerUserSeconds)
+    ];
+
+    var pie = ['#ff8fc7','#7be0b0','#7fc7ff','#ffd166','#b79bff'];
+    var mLabels = Object.keys(q.streaming.methods), mVals = Object.values(q.streaming.methods);
+    var dLabels = Object.keys(q.streaming.devices), dVals = Object.values(q.streaming.devices);
+
+    var dlTotal = (q.audioDownloads || []).reduce(function(a, e){ return a + (Number(e.totalDownloadsOverQuarter) || 0); }, 0);
+    var shareLabels = (q.audioDownloads || []).map(function(e){ return e.show; });
+    var shareValues = (q.audioDownloads || []).map(function(e){ return dlTotal > 0 ? Math.round((Number(e.totalDownloadsOverQuarter) || 0) / dlTotal * 1000) / 10 : 0; });
+
+    this._cd = {
+      methods: { labels: mLabels, values: mVals }, devices: { labels: dLabels, values: dVals },
+      downloadsShare: { labels: shareLabels, values: shareValues }, pie: pie
+    };
+
+    var prevShows = {}; (prev && prev.audioDownloads || []).forEach(function(e){ prevShows[e.show] = e; });
+    var shows = (q.audioDownloads || []).map(function(ep){
+      var p = prevShows[ep.show];
+      var dl = this.showDelta(ep.totalDownloadsOverQuarter, p && p.totalDownloadsOverQuarter);
+      var ad = this.showDelta(ep.avgDailyListeners, p && p.avgDailyListeners);
+      return {
+        show: ep.show,
+        thumbEl: ep.thumbnailUrl
+          ? h('img', { src: ep.thumbnailUrl, alt: ep.show, style: { width: '100%', height: '100%', objectFit: 'cover' } })
+          : h(Icon, { rects: [{ x: 3, y: 13, width: 4.5, height: 6, rx: 1.6 }, { x: 16.5, y: 13, width: 4.5, height: 6, rx: 1.6 }], paths: ['M4 13v-1a8 8 0 0 1 16 0v1'], size: 24 }),
+        downloads: this.fmtInt(ep.totalDownloadsOverQuarter), dlDelta: dl.delta, dlColor: dl.color,
+        avgDaily: this.fmtInt(ep.avgDailyListeners), adDelta: ad.delta, adColor: ad.color,
+        topPlayer: ep.topPlayer || '—',
+        topEpisodeTitle: ep.topEpisodeTitle || 'Untitled episode', topEpisodeUrl: ep.topEpisodeUrl || '#',
+        topDownloadsText: this.fmtInt(ep.topEpisodeDownloads) + ' downloads this quarter',
+        hasNotes: !!(ep.notes && ep.notes.trim()), notes: ep.notes || ''
+      };
+    }.bind(this));
+
+    var mkPosts = function(arr){
+      return (arr || []).map(function(p, i){
+        return {
+          rank: i + 1, title: p.title || 'Untitled post', url: p.url || '', hasUrl: !!(p.url && p.url.trim()),
+          showCategory: p.showCategory || '—', postType: p.postType || '—',
+          engagement: this.fmtInt(p.engagement),
+          reach: (p.reach === '' || p.reach == null || Number(p.reach) === 0) ? '–' : this.fmtInt(p.reach),
+          threeSecViews: (p.threeSecViews === '' || p.threeSecViews == null || Number(p.threeSecViews) === 0) ? '–' : this.fmtInt(p.threeSecViews),
+          views: (p.views === '' || p.views == null || Number(p.views) === 0) ? '–' : this.fmtInt(p.views),
+          mainAccount: p.mainAccount || '—'
+        };
+      }.bind(this));
+    }.bind(this);
+    var fbPosts = mkPosts(q.social && q.social.facebook);
+    var igPosts = mkPosts(q.social && q.social.instagram);
+
+    return Object.assign(base, {
+      quarterTitle: q.quarter,
+      dateRange: this.fmtDate(q.dateRangeStart) + ' – ' + this.fmtDate(q.dateRangeEnd),
+      prevNote: prev ? ('vs. ' + prev.quarter) : 'no prior quarter to compare',
+      bStats: bStats, sStats: sStats, aStats: aStats, wStats: wStats,
+      methodsLegend: mLabels.map(function(l, i){ return { label: l, pct: mVals[i], color: pie[i % pie.length] }; }).sort(function(a, b){ return b.pct - a.pct; }),
+      devicesLegend: dLabels.map(function(l, i){ return { label: l, pct: dVals[i], color: pie[i % pie.length] }; }).sort(function(a, b){ return b.pct - a.pct; }),
+      hasShareData: dlTotal > 0,
+      downloadsShareLegend: shareLabels.map(function(l, i){ return { label: l, pct: shareValues[i], pctWidth: shareValues[i] + '%', color: pie[i % pie.length] }; }),
+      shows: shows,
+      fbPosts: fbPosts, igPosts: igPosts,
+      hasFb: fbPosts.length > 0, hasIg: igPosts.length > 0,
+      hasSocial: fbPosts.length > 0 || igPosts.length > 0
+    });
+  }
+
+  renderStatCard(st){
+    return h('div', { key: st.label, 'data-metric-card': true, style: pStyle('position:relative;background:#f3f7fc;border:1px solid rgba(27,23,20,.07);border-radius:12px;padding:14px 16px') },
+      h('div', { style: pStyle("display:flex;align-items:center;gap:7px;font:600 10.5px/1.3 'Libre Franklin',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#8a8175;margin-bottom:9px") },
+        st.label,
+        st.calc && h('span', { style: pStyle("font:600 8.5px/1 'Libre Franklin',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#b06a1f;background:rgba(224,164,74,.18);padding:3px 5px;border-radius:4px") }, 'calc')
+      ),
+      h('div', { style: pStyle('display:flex;align-items:baseline;gap:10px') },
+        h('span', { style: pStyle("font:500 33px/1 'Newsreader',serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums") }, st.value),
+        st.hasDelta && h('span', { style: Object.assign(pStyle("font:600 12.5px/1 'Libre Franklin',sans-serif;font-variant-numeric:tabular-nums"), { color: st.deltaColor }) }, st.deltaText)
+      ),
+      st.hasInfo && h('div', { 'data-info-pop': true, style: pStyle("position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:30;background:#1b1714;color:#f3efe9;border-radius:10px;padding:11px 13px;font:400 12px/1.5 'Libre Franklin',sans-serif;box-shadow:0 14px 34px -12px rgba(27,23,20,.55);pointer-events:none") }, st.info)
+    );
+  }
+
+  renderSectionHeader(icon, iconBg, iconColor, title, badge){
+    return h('div', { style: pStyle('display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px') },
+      h('div', { style: pStyle('display:flex;align-items:center;gap:12px') },
+        h('span', { style: Object.assign(pStyle('width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none'), { background: iconBg, color: iconColor }) }, icon),
+        h('span', { style: pStyle("font:600 18px/1.15 'Libre Franklin',sans-serif;letter-spacing:-.01em") }, title)
+      ),
+      h('span', { style: pStyle("font:600 10.5px/1 'Libre Franklin',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8175;background:rgba(27,23,20,.05);border:1px solid rgba(27,23,20,.07);padding:6px 10px;border-radius:999px") }, badge)
+    );
+  }
+
+  renderLegend(items){
+    return h('div', { style: pStyle('display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px') },
+      items.map(function(lg, i){
+        return h('span', { key: i, style: pStyle("display:flex;align-items:center;gap:7px;font:500 12px/1 'Libre Franklin',sans-serif;color:#4a443c") },
+          h('span', { style: Object.assign(pStyle('width:9px;height:9px;border-radius:3px;flex:none'), { background: lg.color }) }),
+          lg.label + ' — ' + lg.pct + '%'
+        );
+      })
+    );
+  }
+
+  renderDashboard(v){
+    var s = this.state;
+    var tabBase = "display:flex;align-items:center;gap:7px;white-space:nowrap;font:600 13px/1 'Libre Franklin',sans-serif;padding:8px 15px;border-radius:8px;cursor:pointer;border:none;";
+    var tabOn = pStyle(tabBase + "background:#ffffff;color:#2aa3e0;box-shadow:0 1px 3px rgba(27,23,20,.12)");
+    var tabOff = pStyle(tabBase + "background:transparent;color:#6f675d");
+    var cardStyle = pStyle('background:#ffffff;border:1px solid rgba(27,23,20,.09);border-radius:16px;padding:22px 24px;box-shadow:0 1px 2px rgba(27,23,20,.04),0 10px 30px -22px rgba(27,23,20,.4)');
+
+    return h(React.Fragment, null,
+      h('div', { style: pStyle('position:sticky;top:0;z-index:30;backdrop-filter:blur(12px);border-bottom:1px solid rgba(27,23,20,.1);background-color:#FFFFFF') },
+        h('div', { style: pStyle('max-width:1180px;margin:0 auto;padding:13px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px') },
+          h('a', { href: 'index.html', title: 'Back to home', style: pStyle('display:flex;align-items:center;gap:22px;text-decoration:none;color:inherit') },
+            h('img', { src: './assets/kalw-public-media_cyan-ms6gtzmv-ocvs.png', alt: 'KALW Public Media', style: { height: '40px', display: 'block', objectFit: 'contain' } }),
+            h('div', null,
+              h('div', { style: pStyle("font:600 17px/1.1 'Libre Franklin',sans-serif;letter-spacing:-.01em") }, 'Audience Metrics'),
+              h('div', { style: pStyle("font:500 11.5px/1.2 'Libre Franklin',sans-serif;color:#8a8175;letter-spacing:.02em;margin-top:1px") }, 'Audience Feedback & Insights')
+            )
+          ),
+          h('div', { style: pStyle('display:flex;align-items:center;gap:8px;background:rgba(27,23,20,.055);padding:4px;border-radius:11px') },
+            h('button', { onClick: this.goDashboard, style: s.view === 'dashboard' ? tabOn : tabOff }, h(Icon, { paths: ['M2 20h20'], rects: [{ x: 3, y: 4, width: 18, height: 12, rx: 2 }], size: 15, sw: 1.9 }), 'Dashboard'),
+            h('button', { onClick: this.goRecord, style: s.view === 'record' ? tabOn : tabOff }, h(Icon, { paths: ['M16.5 3.5a2.12 2.12 0 0 1 3 3L7.5 18.5 3 20l1.5-4.5Z','M14.5 5.5l3 3'], size: 15, sw: 1.9 }), 'Log Insights'),
+            h('a', { href: 'tutorial.html', title: 'Back to introduction', className: 'icon-link', style: pStyle("display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:8px;font:500 13px/1 'Libre Franklin',sans-serif;color:#6f675d;text-decoration:none;white-space:nowrap") }, h('span', { style: { fontSize: '14px', lineHeight: 1 } }, 'ⓘ'), 'Introduction')
+          )
+        )
+      ),
+
+      h('div', { style: pStyle('max-width:1180px;margin:0 auto;padding:26px 28px 60px') },
+
+        v.showDashboard && h('div', { style: pStyle('animation:tfade .35s ease both') },
+
+          h('div', { style: pStyle('display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px') },
+            h('div', null,
+              h('div', { style: pStyle("font:600 11px/1 'Libre Franklin',sans-serif;letter-spacing:.11em;text-transform:uppercase;color:#2aa3e0;margin-bottom:9px") }, 'Quarterly Report'),
+              h('div', { style: pStyle("font:500 50px/1 'Newsreader',serif;letter-spacing:-.015em") }, v.quarterTitle),
+              h('div', { style: pStyle("font:500 14px/1.3 'Libre Franklin',sans-serif;color:#6f675d;margin-top:8px") }, v.dateRange + ' · ' + v.prevNote)
+            ),
+            h('div', { style: pStyle('display:flex;align-items:center;gap:10px;flex-wrap:wrap') },
+              h('div', { style: pStyle('display:flex;flex-direction:column;gap:5px') },
+                h('span', { style: pStyle("font:600 10px/1 'Libre Franklin',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#8a8175") }, 'Viewing quarter'),
+                h('select', { value: s.qIndex, onChange: this.onSelectQuarter, style: pStyle("font:600 13.5px/1 'Libre Franklin',sans-serif;color:#1b1714;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:9px;padding:9px 11px;cursor:pointer") },
+                  v.quarterOptions.map(function(opt){ return h('option', { key: opt.value, value: opt.value }, opt.label); })
+                )
+              ),
+              h('div', { style: pStyle('display:flex;flex-direction:column;gap:5px') },
+                h('span', { style: { visibility: 'hidden', fontSize: '10px' } }, '.'),
+                h('button', { onClick: this.editQuarter, title: "Edit this quarter's numbers", style: pStyle("display:inline-flex;align-items:center;gap:6px;font:600 12px/1 'Libre Franklin',sans-serif;color:#2aa3e0;background:rgba(42,163,224,.1);border:1px solid rgba(42,163,224,.24);padding:9px 13px;border-radius:9px") },
+                  h(Icon, { paths: ['M14 5.5l4.5 4.5','M4 20l1.2-4.2L16 5a2 2 0 0 1 3 3L8.2 18.8 4 20Z'], size: 15, sw: 1.7 }), 'Edit this quarter'
+                )
+              ),
+              h('div', { style: pStyle('display:flex;flex-direction:column;gap:5px') },
+                h('span', { style: pStyle("font:600 10px/1 'Libre Franklin',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#8a8175") }, 'Data source'),
+                h('div', { style: pStyle('display:flex;gap:7px') },
+                  h('span', { style: pStyle("display:inline-flex;align-items:center;gap:6px;font:600 12px/1 'Libre Franklin',sans-serif;color:#4a443c;background:rgba(27,23,20,.05);border:1px solid rgba(27,23,20,.09);padding:8px 11px;border-radius:9px") },
+                    h('span', { style: pStyle('width:7px;height:7px;border-radius:50%;background:#22a877') }), s.dataBadge),
+                  h('button', { onClick: this.triggerLoad, title: 'Import an Excel (.xlsx) file', style: pStyle("display:inline-flex;align-items:center;gap:6px;font:600 12px/1 'Libre Franklin',sans-serif;color:#4a443c;background:#ffffff;border:1px solid rgba(27,23,20,.16);padding:8px 11px;border-radius:9px") },
+                    h(Icon, { paths: ['M3.5 7.5v11a1.6 1.6 0 0 0 1.6 1.6h13.8a1.6 1.6 0 0 0 1.6-1.6V9.6A1.6 1.6 0 0 0 19 8H12l-2-2.5H5A1.5 1.5 0 0 0 3.5 7Z'], size: 15, sw: 1.7 }), 'Import Excel'),
+                  h('button', { onClick: this.download, title: 'Download all data as an Excel (.xlsx) file', style: pStyle("display:inline-flex;align-items:center;gap:6px;font:600 12px/1 'Libre Franklin',sans-serif;color:#4a443c;background:#ffffff;border:1px solid rgba(27,23,20,.16);padding:8px 11px;border-radius:9px") },
+                    h(Icon, { paths: ['M12 3v12','M7 10l5 5 5-5','M4 20h16'], size: 15, sw: 1.7 }), 'Export')
+                )
+              )
+            )
+          ),
+
+          h('div', { style: pStyle('display:flex;flex-direction:column;gap:20px') },
+
+            h('div', { style: cardStyle },
+              this.renderSectionHeader(h(Icon, { paths: ['M12 21v-7','M8.5 10.5a5 5 0 0 1 7 0','M5.8 7.8a9 9 0 0 1 12.4 0'], circle: { cx: 12, cy: 12, r: 1.4, fill: 'currentColor', stroke: 'none' } }), 'rgba(42,163,224,.15)', '#2aa3e0', 'KALW Broadcast', 'Nielsen Ratings · Feb 2026'),
+              h('div', { style: pStyle("font:400 11.5px/1.4 'Libre Franklin',sans-serif;color:#8a8175;margin:-6px 0 14px") }, 'February 2026 — the latest available Nielsen data.'),
+              h('div', { style: pStyle('display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px') }, v.bStats.map(this.renderStatCard.bind(this)))
+            ),
+
+            h('div', { style: cardStyle },
+              this.renderSectionHeader(h(Icon, { paths: ['M4 10v4','M8 6v12','M12 3v18','M16 6v12','M20 10v4'], sw: 1.8 }), 'rgba(79,188,224,.18)', '#2f9fc9', 'Streaming', 'StreamGuys'),
+              h('div', { style: pStyle('display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:18px') }, v.sStats.map(this.renderStatCard.bind(this))),
+              h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr;gap:16px') },
+                h('div', { style: pStyle('background:#f3f7fc;border:1px solid rgba(27,23,20,.07);border-radius:12px;padding:16px') },
+                  h('h4', { style: pStyle("font:600 13px/1.2 'Libre Franklin',sans-serif;margin:0 0 12px") }, 'Streaming Methods'),
+                  h('div', { style: pStyle('position:relative;height:168px') }, h('canvas', { id: 'methodsChart' })),
+                  this.renderLegend(v.methodsLegend)
+                ),
+                h('div', { style: pStyle('background:#f3f7fc;border:1px solid rgba(27,23,20,.07);border-radius:12px;padding:16px') },
+                  h('div', { style: pStyle('display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 12px') },
+                    h('h4', { style: pStyle("font:600 13px/1.2 'Libre Franklin',sans-serif;margin:0") }, 'Streaming Devices'),
+                    h('span', { style: pStyle("font:600 9.5px/1 'Libre Franklin',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#8a8175") }, 'NPR Looker Studio')
+                  ),
+                  h('div', { style: pStyle('position:relative;height:168px') }, h('canvas', { id: 'devicesChart' })),
+                  this.renderLegend(v.devicesLegend)
+                )
+              )
+            ),
+
+            h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr;gap:20px') },
+              h('div', { style: cardStyle },
+                this.renderSectionHeader(h(Icon, { rects: [{ x: 7, y: 2.5, width: 10, height: 19, rx: 2.4 }], paths: ['M11 18.2h2'] }), 'rgba(53,192,138,.18)', '#22a877', 'KALW App', 'Public Media App Manager'),
+                h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr;gap:14px') }, v.aStats.map(this.renderStatCard.bind(this)))
+              ),
+              h('div', { style: cardStyle },
+                this.renderSectionHeader(h(Icon, { paths: ['M3 12h18','M12 3c2.8 2.6 4.3 5.7 4.3 9s-1.5 6.4-4.3 9c-2.8-2.6-4.3-5.7-4.3-9s1.5-6.4 4.3-9Z'], circle: { cx: 12, cy: 12, r: 9 } }), 'rgba(154,134,240,.2)', '#7a63e0', 'Website', 'NPR Looker Studio'),
+                h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr;gap:14px') }, v.wStats.map(this.renderStatCard.bind(this)))
+              )
+            ),
+
+            h('div', { style: cardStyle },
+              this.renderSectionHeader(h(Icon, { paths: ['M4 13v-1a8 8 0 0 1 16 0v1'], rects: [{ x: 3, y: 13, width: 4.5, height: 6, rx: 1.6 }, { x: 16.5, y: 13, width: 4.5, height: 6, rx: 1.6 }] }), 'rgba(42,163,224,.13)', '#2aa3e0', 'Audio Downloads', 'NPR LOOKER STUDIO / DOVETAIL PRX'),
+              v.hasShareData && h('div', { style: pStyle('display:grid;grid-template-columns:200px 1fr;gap:24px;align-items:center;background:#f3f7fc;border:1px solid rgba(27,23,20,.07);border-radius:12px;padding:18px 20px;margin-bottom:16px') },
+                h('div', { style: pStyle('position:relative;height:180px') }, h('canvas', { id: 'downloadsShareChart' })),
+                h('div', null,
+                  h('h4', { style: pStyle("font:600 13px/1.2 'Libre Franklin',sans-serif;margin:0 0 3px") }, 'Share of Total Downloads'),
+                  h('div', { style: pStyle("font:400 11px/1.2 'Libre Franklin',sans-serif;color:#9a9186;margin-bottom:14px") }, "Each show's percent of the quarter's downloads"),
+                  h('div', { style: pStyle('display:flex;flex-direction:column;gap:11px') },
+                    v.downloadsShareLegend.map(function(lg, i){
+                      return h('div', { key: i, style: pStyle('display:flex;align-items:center;gap:12px') },
+                        h('span', { style: Object.assign(pStyle('width:10px;height:10px;border-radius:3px;flex:none'), { background: lg.color }) }),
+                        h('span', { style: pStyle("flex:none;width:132px;font:500 12.5px/1.2 'Libre Franklin',sans-serif;color:#4a443c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap") }, lg.label),
+                        h('span', { style: pStyle('flex:1;height:7px;border-radius:4px;background:rgba(27,23,20,.08);overflow:hidden') },
+                          h('span', { style: Object.assign(pStyle('display:block;height:100%;border-radius:4px'), { background: lg.color, width: lg.pctWidth }) })
+                        ),
+                        h('span', { style: pStyle("flex:none;width:44px;text-align:right;font:600 12.5px/1 'Libre Franklin',sans-serif;font-variant-numeric:tabular-nums;color:#1b1714") }, lg.pct + '%')
+                      );
+                    })
+                  )
+                )
+              ),
+              h('div', { style: pStyle('display:grid;grid-template-columns:repeat(auto-fill,minmax(288px,1fr));gap:14px') },
+                v.shows.map(function(ep, i){
+                  return h('div', { key: i, style: pStyle('display:flex;gap:14px;background:#f3f7fc;border:1px solid rgba(27,23,20,.07);border-radius:12px;padding:14px') },
+                    h('div', { style: pStyle('width:56px;height:56px;border-radius:10px;background:rgba(42,163,224,.1);color:#2aa3e0;display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden') }, ep.thumbEl),
+                    h('div', { style: pStyle('flex:1;min-width:0;display:flex;flex-direction:column;gap:10px') },
+                      h('div', { style: pStyle("font:600 15px/1.2 'Libre Franklin',sans-serif") }, ep.show),
+                      h('div', { style: pStyle('display:flex;flex-direction:column;gap:9px') },
+                        h('div', { style: pStyle('display:flex;align-items:baseline;justify-content:space-between;gap:10px') },
+                          h('span', { style: pStyle("font:600 10px/1.2 'Libre Franklin',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#8a8175") }, 'Total downloads / qtr'),
+                          h('span', { style: pStyle('display:flex;align-items:baseline;gap:7px') },
+                            h('span', { style: pStyle("font:500 20px/1 'Newsreader',serif;font-variant-numeric:tabular-nums") }, ep.downloads),
+                            h('span', { style: Object.assign(pStyle("font:600 11px/1 'Libre Franklin',sans-serif;white-space:nowrap"), { color: ep.dlColor }) }, ep.dlDelta)
+                          )
+                        ),
+                        h('div', { style: pStyle('display:flex;align-items:baseline;justify-content:space-between;gap:10px;border-top:1px dashed rgba(27,23,20,.14);padding-top:9px') },
+                          h('span', { style: pStyle("font:600 10px/1.2 'Libre Franklin',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#8a8175") }, 'Avg. weekly unique listeners'),
+                          h('span', { style: pStyle('display:flex;align-items:baseline;gap:7px') },
+                            h('span', { style: pStyle("font:500 20px/1 'Newsreader',serif;font-variant-numeric:tabular-nums") }, ep.avgDaily),
+                            h('span', { style: Object.assign(pStyle("font:600 11px/1 'Libre Franklin',sans-serif;white-space:nowrap"), { color: ep.adColor }) }, ep.adDelta)
+                          )
+                        ),
+                        h('div', { style: pStyle('display:flex;align-items:baseline;justify-content:space-between;gap:10px;border-top:1px dashed rgba(27,23,20,.14);padding-top:9px') },
+                          h('span', { style: pStyle("font:600 10px/1.2 'Libre Franklin',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#8a8175") }, 'Top download player'),
+                          h('span', { style: pStyle("font:500 12.5px/1.2 'Libre Franklin',sans-serif;color:#1b1714;text-align:right") }, ep.topPlayer)
+                        )
+                      ),
+                      h('div', { style: pStyle('border-top:1px dashed rgba(27,23,20,.14);padding-top:9px') },
+                        h('div', { style: pStyle("font:600 10px/1.2 'Libre Franklin',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#8a8175;margin-bottom:4px") }, 'Top episode downloaded'),
+                        h('a', { href: ep.topEpisodeUrl, target: '_blank', rel: 'noopener', style: pStyle("font:500 12.5px/1.3 'Libre Franklin',sans-serif;color:#2aa3e0") }, ep.topEpisodeTitle),
+                        h('div', { style: pStyle("font:400 11px/1.2 'Libre Franklin',sans-serif;color:#9a9186;margin-top:3px") }, ep.topDownloadsText)
+                      ),
+                      ep.hasNotes && h('div', { style: pStyle("font:400 12px/1.4 'Libre Franklin',sans-serif;color:#6f675d;background:rgba(27,23,20,.03);border-radius:8px;padding:8px 10px") }, ep.notes)
+                    )
+                  );
+                })
+              )
+            ),
+
+            v.hasSocial && h('div', { style: Object.assign(cardStyle, { background: '#fffdf9' }) },
+              this.renderSectionHeader(h(Icon, { paths: ['M4 4h16v13H7l-3 3Z','M8 9h8','M8 13h5'] }), 'rgba(224,124,92,.15)', '#d1633f', 'Social Media', 'Meta Business Suite'),
+              h('div', { style: pStyle('display:flex;flex-direction:column;gap:20px') },
+                v.hasFb && this.renderSocialTable('Facebook Top Posts', '#1877f2', v.fbPosts, true),
+                v.hasIg && this.renderSocialTable('Instagram Top Posts', '#c13584', v.igPosts, false)
+              )
+            )
+          ),
+
+          h('div', { style: pStyle("text-align:center;font:400 12px/1.5 'Libre Franklin',sans-serif;color:#9a9186;margin-top:22px;max-width:640px;margin-left:auto;margin-right:auto") },
+            '▲▼ trend arrows are calculated automatically: (this quarter − last quarter) ÷ last quarter, vs. the previous recorded quarter. Metrics tagged ',
+            h('span', { style: pStyle("font:600 8.5px/1 'Libre Franklin',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#b06a1f;background:rgba(224,164,74,.18);padding:2px 5px;border-radius:4px") }, 'calc'),
+            ' are weekly averages derived as (quarter total ÷ days) × 7.'
+          )
+        ),
+
+        v.showEmpty && h('div', { style: pStyle('animation:tfade .35s ease both;max-width:560px;margin:56px auto;text-align:center;background:#ffffff;border:1px solid rgba(27,23,20,.09);border-radius:18px;padding:44px 40px;box-shadow:0 1px 2px rgba(27,23,20,.04),0 20px 50px -30px rgba(27,23,20,.5)') },
+          h('div', { style: pStyle('width:64px;height:64px;border-radius:18px;background:rgba(42,163,224,.13);color:#2aa3e0;display:flex;align-items:center;justify-content:center;margin:0 auto 20px') },
+            h(Icon, { rects: [{ x: 3.5, y: 4.5, width: 17, height: 16, rx: 2.4 }], paths: ['M3.5 9.5h17','M8 2.5v4','M16 2.5v4'], size: 32, sw: 1.5 })
+          ),
+          h('div', { style: pStyle("font:500 26px/1.1 'Newsreader',serif;letter-spacing:-.01em;margin-bottom:10px") }, 'No quarters recorded yet'),
+          h('div', { style: pStyle("font:400 14px/1.5 'Libre Franklin',sans-serif;color:#6f675d;margin-bottom:24px") }, 'Add your first quarter of Broadcast, Streaming, App, Website and Audio Download numbers to populate the dashboard. Everything you enter is saved automatically on this device.'),
+          h('div', { style: pStyle('display:flex;gap:10px;justify-content:center;flex-wrap:wrap') },
+            h('button', { onClick: this.goRecord, style: pStyle("font:600 13px/1 'Libre Franklin',sans-serif;color:#fff;background:#2aa3e0;border:none;padding:12px 20px;border-radius:10px;box-shadow:0 6px 16px -8px rgba(42,163,224,.9)") }, 'Log your first quarter →'),
+            h('button', { onClick: this.triggerLoad, style: pStyle("font:600 13px/1 'Libre Franklin',sans-serif;color:#4a443c;background:#ffffff;border:1px solid rgba(27,23,20,.16);padding:12px 18px;border-radius:10px") }, 'Import an Excel file')
+          )
+        ),
+
+        v.showRecord && this.renderRecordForm()
+      )
+    );
+  }
+
+  renderSocialTable(title, dotColor, posts, isFb){
+    var cols = isFb
+      ? ['44px','minmax(0,1fr)','120px','110px','100px','90px','90px']
+      : ['44px','minmax(0,1fr)','150px','130px','110px','110px'];
+    var headLabels = isFb
+      ? ['Rank','Top Post','Show / Category','Post Type','Engagement','Reach','3-Sec Views']
+      : ['Rank','Top Post','Show / Category','Post Type','Engagement','Reach'];
+    var headBg = isFb ? '#eaf2fb' : '#fbeaf4';
+    var headColor = isFb ? '#3f5a7a' : '#7a3f63';
+    return h('div', { key: title },
+      h('div', { style: pStyle('display:flex;align-items:center;gap:8px;margin-bottom:10px') },
+        h('span', { style: Object.assign(pStyle('width:8px;height:8px;border-radius:50%'), { background: dotColor }) }),
+        h('h4', { style: pStyle("font:600 13px/1.2 'Libre Franklin',sans-serif;margin:0") }, title)
+      ),
+      h('div', { style: pStyle('border:1px solid rgba(27,23,20,.09);border-radius:12px;overflow:hidden') },
+        h('div', { style: Object.assign(pStyle("font:600 10px/1.2 'Libre Franklin',sans-serif;letter-spacing:.05em;text-transform:uppercase;display:grid"), { gridTemplateColumns: cols.join(' '), background: headBg, color: headColor }) },
+          headLabels.map(function(l, i){ return h('div', { key: i, style: { padding: '9px 12px', textAlign: (i >= 4) ? 'right' : 'left' } }, l); })
+        ),
+        posts.map(function(p, i){
+          var cells = [
+            h('div', { key: 'r', style: pStyle("padding:11px 12px;font:600 14px/1 'Newsreader',serif;color:#6f675d;text-align:center") }, p.rank),
+            h('div', { key: 't', style: pStyle('padding:11px 12px;min-width:0') }, p.hasUrl
+              ? h('a', { href: p.url, target: '_blank', rel: 'noopener', style: pStyle("font:500 13px/1.35 'Libre Franklin',sans-serif;color:#2aa3e0") }, p.title)
+              : h('span', { style: pStyle("font:500 13px/1.35 'Libre Franklin',sans-serif;color:#1b1714") }, p.title)),
+            h('div', { key: 'c', style: pStyle("padding:11px 12px;font:400 12.5px/1.3 'Libre Franklin',sans-serif;color:#4a443c") }, p.showCategory),
+            h('div', { key: 'p', style: pStyle("padding:11px 12px;font:400 12.5px/1.3 'Libre Franklin',sans-serif;color:#4a443c") }, p.postType),
+            h('div', { key: 'e', style: pStyle("padding:11px 12px;font:500 13px/1 'Libre Franklin',sans-serif;font-variant-numeric:tabular-nums;color:#1b1714;text-align:right") }, p.engagement),
+            h('div', { key: 're', style: pStyle("padding:11px 12px;font:500 13px/1 'Libre Franklin',sans-serif;font-variant-numeric:tabular-nums;color:#1b1714;text-align:right") }, p.reach)
+          ];
+          if (isFb) cells.push(h('div', { key: 'v', style: pStyle("padding:11px 12px;font:500 13px/1 'Libre Franklin',sans-serif;font-variant-numeric:tabular-nums;color:#1b1714;text-align:right") }, p.threeSecViews));
+          return h('div', { key: i, style: Object.assign(pStyle('display:grid;border-top:1px solid rgba(27,23,20,.07);align-items:center'), { gridTemplateColumns: cols.join(' ') }) }, cells);
+        })
+      )
+    );
+  }
+
+  renderRecordForm(){
+    var s = this.state; var d = s.draft; if (!d) return null;
+    var editing = s.editIndex != null;
+    var groupCard = pStyle('background:#ffffff;border:1px solid rgba(27,23,20,.09);border-radius:16px;padding:20px 22px');
+    var groupTitle = function(color, text, sub){
+      return h('div', { style: pStyle("font:600 14px/1 'Libre Franklin',sans-serif;margin-bottom:16px;display:flex;align-items:center;gap:8px") },
+        h('span', { style: Object.assign(pStyle('width:6px;height:18px;border-radius:3px;display:inline-block'), { background: color }) }), text,
+        sub && h('span', { style: pStyle("font:500 12px/1 'Libre Franklin',sans-serif;color:#9a9186") }, ' · ' + sub)
+      );
+    };
+    var hrs = this.hmParts(d.broadcast.timeEngagedMinutes);
+    var smin = this.hmParts(d.streaming.engagedAudienceSeconds);
+
+    var timeField = function(label, hint, valA, onA, valB, onB, labA, labB){
+      return h('div', null,
+        h('label', { style: pStyle(LABEL_STYLE) }, label, hint && h('span', { style: { textTransform: 'none', letterSpacing: 0, color: '#9a9186' } }, ' ' + hint)),
+        h('div', { style: pStyle('display:flex;align-items:center;gap:8px') },
+          h('input', { type: 'number', min: 0, value: valA, onChange: onA, placeholder: '00', 'aria-label': labA, style: pStyle('width:100%;box-sizing:border-box;text-align:center;font:400 14px/1.3 \'Libre Franklin\',sans-serif;color:#1b1714;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:9px;padding:9px 8px;outline:none') }),
+          h('span', { style: pStyle("font:600 16px/1 'Libre Franklin',sans-serif;color:#9a9186") }, ':'),
+          h('input', { type: 'number', min: 0, max: 59, value: valB, onChange: onB, placeholder: '00', 'aria-label': labB, style: pStyle('width:100%;box-sizing:border-box;text-align:center;font:400 14px/1.3 \'Libre Franklin\',sans-serif;color:#1b1714;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:9px;padding:9px 8px;outline:none') })
+        ),
+        h('div', { style: pStyle('display:flex;gap:8px;margin-top:4px') },
+          h('span', { style: pStyle("flex:1;text-align:center;font:500 9.5px/1 'Libre Franklin',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#9a9186") }, labA),
+          h('span', { style: { width: '8px' } }),
+          h('span', { style: pStyle("flex:1;text-align:center;font:500 9.5px/1 'Libre Franklin',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#9a9186") }, labB)
+        )
+      );
+    };
+
+    var pctField = function(label, value, onChange){
+      return h('div', { style: pStyle('display:flex;align-items:center;gap:10px') },
+        h('span', { style: pStyle("flex:1;font:500 13px/1 'Libre Franklin',sans-serif;color:#4a443c") }, label),
+        h('input', { type: 'number', value: value, onChange: onChange, style: pStyle("width:74px;box-sizing:border-box;font:400 13px/1 'Libre Franklin',sans-serif;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:8px;padding:7px 9px;outline:none") })
+      );
+    };
+
+    var actions = h('div', { style: pStyle('display:flex;gap:10px') },
+      h('button', { onClick: this.goDashboard, style: pStyle("font:600 13px/1 'Libre Franklin',sans-serif;color:#4a443c;background:#ffffff;border:1px solid rgba(27,23,20,.16);padding:11px 16px;border-radius:10px") }, 'Cancel'),
+      h('button', { onClick: this.saveQuarter, style: pStyle("font:600 13px/1 'Libre Franklin',sans-serif;color:#fff;background:#2aa3e0;border:none;padding:11px 18px;border-radius:10px;box-shadow:0 6px 16px -8px rgba(42,163,224,.9)") }, editing ? 'Update quarter →' : 'Save quarter →')
+    );
+
+    return h('div', { style: pStyle('animation:tfade .35s ease both;max-width:900px;margin:0 auto') },
+      h('div', { style: pStyle('display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px') },
+        h('div', null,
+          h('div', { style: pStyle("font:600 11px/1 'Libre Franklin',sans-serif;letter-spacing:.11em;text-transform:uppercase;color:#2aa3e0;margin-bottom:9px") }, editing ? 'Edit quarter' : 'Add a quarter'),
+          h('div', { style: pStyle("font:500 34px/1 'Newsreader',serif;letter-spacing:-.015em") }, editing ? 'Edit Insights' : 'Log Insights'),
+          h('div', { style: pStyle("font:500 14px/1.4 'Libre Franklin',sans-serif;color:#6f675d;margin-top:8px;max-width:520px") }, "Enter this quarter's raw numbers. Weekly averages and trend arrows are computed for you on the dashboard.")
+        ),
+        actions
+      ),
+
+      h('div', { style: pStyle('display:flex;flex-direction:column;gap:18px') },
+
+        h('div', { style: groupCard },
+          groupTitle('#DC2AE0', 'Reporting Period'),
+          h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px') },
+            h(Field, { label: 'Quarter label', value: d.quarter, onChange: this.mk('quarter'), placeholder: 'Q3 2025' }),
+            h(Field, { label: 'Start date', type: 'date', value: d.dateRangeStart, onChange: this.mk('dateRangeStart') }),
+            h(Field, { label: 'End date', type: 'date', value: d.dateRangeEnd, onChange: this.mk('dateRangeEnd') })
+          )
+        ),
+
+        h('div', { style: groupCard },
+          groupTitle('#2aa3e0', 'Broadcast', 'Nielsen'),
+          h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px') },
+            h(Field, { label: 'Weekly Overall Reach', type: 'number', value: d.broadcast.weeklyOverallReach, onChange: this.mk('broadcast.weeklyOverallReach'), placeholder: '0' }),
+            h(Field, { label: 'Engaged Audience', type: 'number', value: d.broadcast.engagedAudience, onChange: this.mk('broadcast.engagedAudience'), placeholder: '0' }),
+            timeField('Time Engaged', '(hr:min)', hrs.a, this.mkTime('broadcast.timeEngagedMinutes', 'a'), hrs.b, this.mkTime('broadcast.timeEngagedMinutes', 'b'), 'hr', 'min')
+          )
+        ),
+
+        h('div', { style: groupCard },
+          groupTitle('#5BC92F', 'Streaming', 'StreamGuys'),
+          h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px') },
+            h(Field, { label: 'Total Cume', hint: '(quarter total)', type: 'number', value: d.streaming.totalCume, onChange: this.mk('streaming.totalCume'), placeholder: '0' }),
+            timeField('Avg. Time Engaged', '(min:sec)', smin.a, this.mkTime('streaming.engagedAudienceSeconds', 'a'), smin.b, this.mkTime('streaming.engagedAudienceSeconds', 'b'), 'min', 'sec')
+          ),
+          h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr;gap:22px') },
+            h('div', null,
+              h('div', { style: pStyle('display:flex;align-items:baseline;gap:8px;margin-bottom:10px') },
+                h('span', { style: pStyle("font:600 10.5px/1 'Libre Franklin',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#8a8175") }, 'Methods (%)'),
+                h('span', { style: pStyle("font:500 10px/1 'Libre Franklin',sans-serif;color:#9a9186") }, ' · StreamGuys')
+              ),
+              h('div', { style: pStyle('display:flex;flex-direction:column;gap:8px') },
+                pctField('Browser', d.streaming.methods['Web Player'], this.mk('streaming.methods.Web Player')),
+                pctField('App', d.streaming.methods['Mobile App'], this.mk('streaming.methods.Mobile App')),
+                pctField('Library', d.streaming.methods['Smart Speaker'], this.mk('streaming.methods.Smart Speaker')),
+                pctField('Unknown', d.streaming.methods['Other'], this.mk('streaming.methods.Other'))
+              )
+            ),
+            h('div', null,
+              h('div', { style: pStyle('display:flex;align-items:baseline;gap:8px;margin-bottom:10px') },
+                h('span', { style: pStyle("font:600 10.5px/1 'Libre Franklin',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#8a8175") }, 'Devices (%)'),
+                h('span', { style: pStyle("font:500 10px/1 'Libre Franklin',sans-serif;color:#9a9186") }, ' · NPR Looker Studio')
+              ),
+              h('div', { style: pStyle('display:flex;flex-direction:column;gap:8px') },
+                pctField('Mobile', d.streaming.devices['Mobile'], this.mk('streaming.devices.Mobile')),
+                pctField('Desktop', d.streaming.devices['Desktop'], this.mk('streaming.devices.Desktop')),
+                pctField('Smart Speaker', d.streaming.devices['Smart Speaker'], this.mk('streaming.devices.Smart Speaker'))
+              )
+            )
+          )
+        ),
+
+        h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr;gap:18px') },
+          h('div', { style: groupCard },
+            groupTitle('#E65ABB', 'App', 'Public Media App Manager'),
+            h('div', { style: pStyle('display:flex;flex-direction:column;gap:14px') },
+              h(Field, { label: 'Total Users', hint: '(qtr)', type: 'number', value: d.app.totalUsers, onChange: this.mk('app.totalUsers'), placeholder: '0' }),
+              h(Field, { label: 'Total Sessions', hint: '(qtr)', type: 'number', value: d.app.totalSessions, onChange: this.mk('app.totalSessions'), placeholder: '0' })
+            )
+          ),
+          h('div', { style: groupCard },
+            groupTitle('#7a63e0', 'Website', 'NPR Looker Studio'),
+            h('div', { style: pStyle('display:flex;flex-direction:column;gap:14px') },
+              h(Field, { label: 'Total Users', hint: '(qtr)', type: 'number', value: d.website.totalVisitors, onChange: this.mk('website.totalVisitors'), placeholder: '0' }),
+              h(Field, { label: 'Avg. Session Duration', hint: '(seconds)', type: 'number', value: d.website.avgSessionsPerUserSeconds, onChange: this.mk('website.avgSessionsPerUserSeconds'), placeholder: '0' })
+            )
+          )
+        ),
+
+        h('div', { style: groupCard },
+          h('div', { style: pStyle('display:flex;align-items:center;justify-content:space-between;margin-bottom:16px') },
+            groupTitle('#2aa3e0', 'Audio Downloads by Show'),
+            h('button', { onClick: this.addShow, style: pStyle("font:600 12px/1 'Libre Franklin',sans-serif;color:#2aa3e0;background:rgba(42,163,224,.1);border:1px solid rgba(42,163,224,.22);padding:8px 12px;border-radius:9px") }, '+ Add show')
+          ),
+          h('div', { style: pStyle('display:flex;flex-direction:column;gap:14px') },
+            d.shows.map(function(sh, i){
+              return h('div', { key: i, style: pStyle('border:1px solid rgba(27,23,20,.1);border-radius:12px;padding:14px;background:#f3f7fc;position:relative') },
+                h('div', { style: pStyle('display:flex;gap:10px;margin-bottom:10px') },
+                  h('select', { value: sh.show, onChange: this.onShowSelect(i), style: pStyle("flex:1;box-sizing:border-box;font:600 14px/1.3 'Libre Franklin',sans-serif;color:#1b1714;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:9px;padding:9px 11px;cursor:pointer") },
+                    h('option', { value: '', disabled: true }, 'Select a show…'),
+                    s.roster.map(function(opt){ return h('option', { key: opt, value: opt }, opt); }),
+                    h('option', { value: '__add__' }, '+ Add a new show…')
+                  ),
+                  s.addShowIdx === i && h(React.Fragment, null,
+                    h('input', { value: s.newShowName, onChange: this.onNewShowName, placeholder: 'New show name', autoFocus: true, style: pStyle("flex:1;box-sizing:border-box;font:600 14px/1.3 'Libre Franklin',sans-serif;background:#ffffff;border:1px solid #2aa3e0;border-radius:9px;padding:9px 11px;outline:none") }),
+                    h('button', { onClick: function(){ this.confirmNewShow(i); }.bind(this), style: pStyle("font:600 12px/1 'Libre Franklin',sans-serif;color:#fff;background:#2aa3e0;border:none;padding:0 14px;border-radius:9px") }, 'Add'),
+                    h('button', { onClick: this.cancelNewShow, title: 'Cancel', style: pStyle("font:600 12px/1 'Libre Franklin',sans-serif;color:#6f675d;background:#fff;border:1px solid rgba(27,23,20,.16);padding:0 12px;border-radius:9px") }, '✕')
+                  ),
+                  h('button', { onClick: function(){ this.removeShow(i); }.bind(this), title: 'Remove show', style: pStyle("font:600 12px/1 'Libre Franklin',sans-serif;color:#1c7fb4;background:#fff;border:1px solid rgba(27,23,20,.16);padding:0 12px;border-radius:9px") }, 'Remove')
+                ),
+                h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr;gap:10px 12px') },
+                  h(Field, { small: true, label: 'Total Downloads Over Quarter', type: 'number', value: sh.totalDownloadsOverQuarter, onChange: this.mk('shows.' + i + '.totalDownloadsOverQuarter'), placeholder: '0' }),
+                  h(Field, { small: true, label: 'Avg. Weekly Unique Listeners', type: 'number', value: sh.avgDailyListeners, onChange: this.mk('shows.' + i + '.avgDailyListeners'), placeholder: '0' }),
+                  h(Field, { small: true, label: 'Top Audio Download Player', value: sh.topPlayer, onChange: this.mk('shows.' + i + '.topPlayer'), placeholder: 'e.g. Apple Podcasts' })
+                ),
+                h('div', { style: pStyle('border-top:1px solid rgba(27,23,20,.12);margin-top:14px;padding-top:12px;display:grid;grid-template-columns:1fr 1fr 130px;gap:10px 12px') },
+                  h(Field, { small: true, label: 'Top Episode Title', value: sh.topEpisodeTitle, onChange: this.mk('shows.' + i + '.topEpisodeTitle'), placeholder: 'Episode title' }),
+                  h(Field, { small: true, label: 'Top Episode URL', value: sh.topEpisodeUrl, onChange: this.mk('shows.' + i + '.topEpisodeUrl'), placeholder: 'https://' }),
+                  h(Field, { small: true, label: 'Ep. Downloads', type: 'number', value: sh.topEpisodeDownloads, onChange: this.mk('shows.' + i + '.topEpisodeDownloads'), placeholder: '0' })
+                )
+              );
+            }.bind(this))
+          )
+        ),
+
+        h('div', { style: pStyle('background:#fffdf9;border:1px solid rgba(27,23,20,.09);border-radius:16px;padding:20px 22px') },
+          groupTitle('#d1633f', 'Social Media', 'Top posts by platform'),
+          h('div', { style: pStyle("font:400 12px/1.4 'Libre Franklin',sans-serif;color:#9a9186;margin-bottom:16px") }, "Rank is set by row order — the first row is #1. Leave a platform's rows blank to omit it."),
+          this.renderPostGroup('Facebook Top Posts', '#1877f2', d.facebookPosts, 'facebook', true),
+          this.renderPostGroup('Instagram Top Posts', '#c13584', d.instagramPosts, 'instagram', false)
+        ),
+
+        h('div', { style: pStyle('display:flex;justify-content:flex-end;gap:10px;padding-bottom:20px') }, actions)
+      )
+    );
+  }
+
+  renderPostGroup(title, dotColor, posts, platform, isFb){
+    return h('div', { style: pStyle('margin-bottom:18px') },
+      h('div', { style: pStyle('display:flex;align-items:center;justify-content:space-between;margin-bottom:10px') },
+        h('div', { style: pStyle('display:flex;align-items:center;gap:8px') },
+          h('span', { style: Object.assign(pStyle('width:8px;height:8px;border-radius:50%'), { background: dotColor }) }),
+          h('span', { style: pStyle("font:600 12.5px/1 'Libre Franklin',sans-serif") }, title)
+        ),
+        h('button', { onClick: function(){ this.addPost(platform); }.bind(this), style: pStyle("font:600 12px/1 'Libre Franklin',sans-serif;color:#2aa3e0;background:rgba(42,163,224,.1);border:1px solid rgba(42,163,224,.22);padding:8px 12px;border-radius:9px") }, '+ Add post')
+      ),
+      h('div', { style: pStyle('display:flex;flex-direction:column;gap:10px') },
+        posts.map(function(p, i){
+          var key = platform === 'instagram' ? 'instagramPosts' : 'facebookPosts';
+          var extra = isFb
+            ? h('input', { type: 'number', value: p.threeSecViews, onChange: this.mk(key + '.' + i + '.threeSecViews'), placeholder: '3-second views', style: pStyle("box-sizing:border-box;font:400 12.5px/1.3 'Libre Franklin',sans-serif;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:8px;padding:8px 10px;outline:none") })
+            : null;
+          return h('div', { key: i, style: pStyle('display:grid;grid-template-columns:36px 1fr 130px;gap:8px;align-items:start;background:#f3f7fc;border:1px solid rgba(27,23,20,.09);border-radius:10px;padding:10px') },
+            h('div', { style: pStyle("font:600 15px/1 'Newsreader',serif;color:#6f675d;text-align:center;padding-top:9px") }, i + 1),
+            h('div', { style: pStyle('display:flex;flex-direction:column;gap:8px;min-width:0') },
+              h('input', { value: p.title, onChange: this.mk(key + '.' + i + '.title'), placeholder: 'Post title', style: pStyle("box-sizing:border-box;font:500 13px/1.3 'Libre Franklin',sans-serif;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:8px;padding:8px 10px;outline:none") }),
+              h('div', { style: pStyle('display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px') },
+                h('input', { value: p.url, onChange: this.mk(key + '.' + i + '.url'), placeholder: 'Post URL', style: pStyle("box-sizing:border-box;font:400 12.5px/1.3 'Libre Franklin',sans-serif;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:8px;padding:8px 10px;outline:none") }),
+                h('input', { value: p.showCategory, onChange: this.mk(key + '.' + i + '.showCategory'), placeholder: 'Show / Category', style: pStyle("box-sizing:border-box;font:400 12.5px/1.3 'Libre Franklin',sans-serif;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:8px;padding:8px 10px;outline:none") }),
+                h('input', { value: p.postType, onChange: this.mk(key + '.' + i + '.postType'), placeholder: 'Post type', style: pStyle("box-sizing:border-box;font:400 12.5px/1.3 'Libre Franklin',sans-serif;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:8px;padding:8px 10px;outline:none") })
+              ),
+              h('div', { style: pStyle('display:grid;grid-template-columns:' + (isFb ? '1fr 1fr 1fr' : '1fr 1fr') + ';gap:8px') },
+                h('input', { type: 'number', value: p.engagement, onChange: this.mk(key + '.' + i + '.engagement'), placeholder: 'Engagement', style: pStyle("box-sizing:border-box;font:400 12.5px/1.3 'Libre Franklin',sans-serif;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:8px;padding:8px 10px;outline:none") }),
+                h('input', { type: 'number', value: p.reach, onChange: this.mk(key + '.' + i + '.reach'), placeholder: 'Reach', style: pStyle("box-sizing:border-box;font:400 12.5px/1.3 'Libre Franklin',sans-serif;background:#ffffff;border:1px solid rgba(27,23,20,.16);border-radius:8px;padding:8px 10px;outline:none") }),
+                extra
+              )
+            ),
+            h('button', { onClick: function(){ this.removePost(platform, i); }.bind(this), title: 'Remove post', style: pStyle("font:600 11px/1 'Libre Franklin',sans-serif;color:#1c7fb4;background:#fff;border:1px solid rgba(27,23,20,.16);padding:9px 10px;border-radius:8px") }, 'Remove')
+          );
+        }.bind(this))
+      )
+    );
+  }
+
+  render(){
+    var v = this.getViewData();
+    var s = this.state;
+    return h('div', { style: pStyle('min-height:100vh') },
+      this.renderDashboard(v),
+      h('input', { type: 'file', accept: '.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/json,.json', ref: this.fileRef, onChange: this.onFile, style: { display: 'none' } }),
+      s.toast && h('div', { style: pStyle("position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;background:#1b1714;color:#fff;font:500 13px/1.3 'Libre Franklin',sans-serif;padding:12px 20px;border-radius:11px;box-shadow:0 12px 34px -12px rgba(0,0,0,.5);animation:tfade .25s ease both") }, s.toast)
+    );
+  }
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>
