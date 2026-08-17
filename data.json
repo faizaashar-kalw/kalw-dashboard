@@ -118,8 +118,8 @@
       "dateRangeEnd": "2026-06-30",
       "broadcast": {
         "weeklyOverallReach": 112100,
-        "engagedAudience": 6500,
-        "timeEngagedMinutes": 210
+        "engagedAudience": 2800,
+        "timeEngagedMinutes": 195
       },
       "streaming": {
         "totalCume": 75880,
@@ -142,7 +142,7 @@
         "totalSessions": 22.53
       },
       "website": {
-        "totalVisitors": 94891,
+        "totalVisitors": 219246,
         "avgSessionsPerUserSeconds": 52
       },
       "audioDownloads": [
@@ -152,7 +152,6 @@
           "avgDailyListeners": 1270,
           "topPlayer": "Chrome",
           "topEpisodeTitle": "“Baseball, a broken window, and an empathy lesson”",
-          "topEpisodeDate": "",
           "topEpisodeUrl": "https://www.kalw.org/2026-04-16/baseball-a-broken-window-and-an-empathy-lesson",
           "topEpisodeDownloads": 1037,
           "notes": "",
@@ -164,7 +163,6 @@
           "avgDailyListeners": 720,
           "topPlayer": "Unknown",
           "topEpisodeTitle": "Get Ready for Uncuffed Season 5!",
-          "topEpisodeDate": "",
           "topEpisodeUrl": "#",
           "topEpisodeDownloads": 5497,
           "notes": "",
@@ -176,7 +174,6 @@
           "avgDailyListeners": 1026,
           "topPlayer": "Apple Podcasts",
           "topEpisodeTitle": "How are you voting in California's chaotic Governor's race?",
-          "topEpisodeDate": "",
           "topEpisodeUrl": "https://www.kalw.org/show/your-call/2026-05-07/how-are-you-voting-in-californias-chaotic-governors-race",
           "topEpisodeDownloads": 624,
           "notes": "",
@@ -188,7 +185,6 @@
           "avgDailyListeners": 793,
           "topPlayer": "NPR Apps & Skills",
           "topEpisodeTitle": "Sights + Sounds Picks: Poet Adrienne Danyelle Oliver",
-          "topEpisodeDate": "",
           "topEpisodeUrl": "https://www.kalw.org/show/sights-sounds/2026-05-28/sights-sounds-picks-poet-adrienne-danyelle-oliver",
           "topEpisodeDownloads": 1381,
           "notes": "",
@@ -200,7 +196,6 @@
           "avgDailyListeners": 135,
           "topPlayer": "Web Browser",
           "topEpisodeTitle": "When Speech Isn't Free",
-          "topEpisodeDate": "",
           "topEpisodeUrl": "https://www.kalw.org/show/your-legal-rights/2026-06-10/when-speech-isnt-free",
           "topEpisodeDownloads": 197,
           "notes": "",
@@ -212,7 +207,6 @@
           "avgDailyListeners": 157,
           "topPlayer": "Web Browser",
           "topEpisodeTitle": "Super’ El Niño? / Great California Road Trips / Rain Gardens at Home",
-          "topEpisodeDate": "",
           "topEpisodeUrl": "https://www.kalw.org/show/state-bay/2026-05-18/super-el-nino-great-california-road-trips-rain-gardens-at-home",
           "topEpisodeDownloads": 201,
           "notes": "",
@@ -228,9 +222,7 @@
             "postType": "Photo",
             "engagement": 4879,
             "reach": 84676,
-            "threeSecViews": 0,
-            "views": 0,
-            "mainAccount": ""
+            "threeSecViews": 0
           },
           {
             "title": "This Earth Day, take in the sounds of nature.",
@@ -239,9 +231,7 @@
             "postType": "Video (cross-posted from Instagram)",
             "engagement": 48,
             "reach": 779,
-            "threeSecViews": 374,
-            "views": 0,
-            "mainAccount": ""
+            "threeSecViews": 374
           },
           {
             "title": "Give it up for our latest Uncuffed graduates!",
@@ -250,9 +240,7 @@
             "postType": "Photo",
             "engagement": 45,
             "reach": 3757,
-            "threeSecViews": 0,
-            "views": 0,
-            "mainAccount": ""
+            "threeSecViews": 0
           },
           {
             "title": "The Next KALW On-Air Folk Festival Is This Saturday June 6th!!",
@@ -261,9 +249,7 @@
             "postType": "Photo",
             "engagement": 38,
             "reach": 457,
-            "threeSecViews": 0,
-            "views": 0,
-            "mainAccount": ""
+            "threeSecViews": 0
           },
           {
             "title": "Brittany Haas and Natalie Haas performing live on KALW June 6, 2026",
@@ -272,9 +258,7 @@
             "postType": "Photo",
             "engagement": 35,
             "reach": 706,
-            "threeSecViews": 0,
-            "views": 0,
-            "mainAccount": ""
+            "threeSecViews": 0
           }
         ],
         "instagram": [
@@ -285,7 +269,6 @@
             "postType": "Photo Carousel",
             "engagement": 1717,
             "reach": 186384,
-            "threeSecViews": 0,
             "views": 0,
             "mainAccount": "npr"
           },
@@ -296,7 +279,6 @@
             "postType": "Photo",
             "engagement": 1604,
             "reach": 10338,
-            "threeSecViews": 0,
             "views": 17798,
             "mainAccount": "kalwpublicmedia"
           },
@@ -307,7 +289,6 @@
             "postType": "Photo",
             "engagement": 1043,
             "reach": 17550,
-            "threeSecViews": 0,
             "views": 33473,
             "mainAccount": "kalwpublicmedia"
           },
@@ -318,7 +299,6 @@
             "postType": "Photo",
             "engagement": 906,
             "reach": 0,
-            "threeSecViews": 0,
             "views": 16373,
             "mainAccount": "we.are.uncuffed"
           },
@@ -329,7 +309,6 @@
             "postType": "Photo",
             "engagement": 743,
             "reach": 0,
-            "threeSecViews": 0,
             "views": 14281,
             "mainAccount": "kalwmusic"
           }
