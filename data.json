@@ -1,0 +1,340 @@
+{
+  "quarters": [
+    {
+      "quarter": "Q1 2026",
+      "dateRangeStart": "2026-01-01",
+      "dateRangeEnd": "2026-03-31",
+      "broadcast": {
+        "weeklyOverallReach": 112100,
+        "engagedAudience": 6500,
+        "timeEngagedMinutes": 210
+      },
+      "streaming": {
+        "totalCume": 77952,
+        "engagedAudienceSeconds": 1574,
+        "methods": {
+          "Web Player": 28.7,
+          "Mobile App": 40.06,
+          "Smart Speaker": 10.06,
+          "Other": 21.19
+        },
+        "devices": {
+          "Mobile": 55.95,
+          "Desktop": 24.19,
+          "Smart Speaker": 19.87,
+          "Tablet": 0
+        }
+      },
+      "app": {
+        "totalUsers": 3049,
+        "totalSessions": 22.84
+      },
+      "website": {
+        "totalVisitors": 204443,
+        "avgSessionsPerUserSeconds": 59
+      },
+      "audioDownloads": [
+        {
+          "show": "Crosscurrents",
+          "totalDownloadsOverQuarter": 42228,
+          "avgDailyListeners": 1342,
+          "topPlayer": "",
+          "topEpisodeTitle": "Untitled episode",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "#",
+          "topEpisodeDownloads": 0,
+          "notes": "",
+          "thumbnailUrl": ""
+        },
+        {
+          "show": "Uncuffed",
+          "totalDownloadsOverQuarter": 0,
+          "avgDailyListeners": 0,
+          "topPlayer": "",
+          "topEpisodeTitle": "Untitled episode",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "#",
+          "topEpisodeDownloads": 0,
+          "notes": "",
+          "thumbnailUrl": ""
+        },
+        {
+          "show": "Your Call",
+          "totalDownloadsOverQuarter": 0,
+          "avgDailyListeners": 0,
+          "topPlayer": "",
+          "topEpisodeTitle": "Untitled episode",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "#",
+          "topEpisodeDownloads": 0,
+          "notes": "",
+          "thumbnailUrl": ""
+        },
+        {
+          "show": "Sights+Sounds",
+          "totalDownloadsOverQuarter": 0,
+          "avgDailyListeners": 0,
+          "topPlayer": "",
+          "topEpisodeTitle": "Untitled episode",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "#",
+          "topEpisodeDownloads": 0,
+          "notes": "",
+          "thumbnailUrl": ""
+        },
+        {
+          "show": "Your Legal Rights",
+          "totalDownloadsOverQuarter": 0,
+          "avgDailyListeners": 0,
+          "topPlayer": "",
+          "topEpisodeTitle": "Untitled episode",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "#",
+          "topEpisodeDownloads": 0,
+          "notes": "",
+          "thumbnailUrl": ""
+        },
+        {
+          "show": "State of the Bay",
+          "totalDownloadsOverQuarter": 0,
+          "avgDailyListeners": 0,
+          "topPlayer": "",
+          "topEpisodeTitle": "Untitled episode",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "#",
+          "topEpisodeDownloads": 0,
+          "notes": "",
+          "thumbnailUrl": ""
+        }
+      ],
+      "social": {
+        "facebook": [],
+        "instagram": []
+      }
+    },
+    {
+      "quarter": "Q2 2026",
+      "dateRangeStart": "2026-04-01",
+      "dateRangeEnd": "2026-06-30",
+      "broadcast": {
+        "weeklyOverallReach": 112100,
+        "engagedAudience": 6500,
+        "timeEngagedMinutes": 210
+      },
+      "streaming": {
+        "totalCume": 75880,
+        "engagedAudienceSeconds": 1630,
+        "methods": {
+          "Web Player": 28.25,
+          "Mobile App": 40.22,
+          "Smart Speaker": 9.11,
+          "Other": 22.42
+        },
+        "devices": {
+          "Mobile": 55.5,
+          "Desktop": 24.81,
+          "Smart Speaker": 19.69,
+          "Tablet": 0
+        }
+      },
+      "app": {
+        "totalUsers": 3158,
+        "totalSessions": 22.53
+      },
+      "website": {
+        "totalVisitors": 94891,
+        "avgSessionsPerUserSeconds": 52
+      },
+      "audioDownloads": [
+        {
+          "show": "Crosscurrents",
+          "totalDownloadsOverQuarter": 40344,
+          "avgDailyListeners": 1270,
+          "topPlayer": "Chrome",
+          "topEpisodeTitle": "“Baseball, a broken window, and an empathy lesson”",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "https://www.kalw.org/2026-04-16/baseball-a-broken-window-and-an-empathy-lesson",
+          "topEpisodeDownloads": 1037,
+          "notes": "",
+          "thumbnailUrl": ""
+        },
+        {
+          "show": "Uncuffed",
+          "totalDownloadsOverQuarter": 18665,
+          "avgDailyListeners": 720,
+          "topPlayer": "Unknown",
+          "topEpisodeTitle": "Get Ready for Uncuffed Season 5!",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "#",
+          "topEpisodeDownloads": 5497,
+          "notes": "",
+          "thumbnailUrl": ""
+        },
+        {
+          "show": "Your Call",
+          "totalDownloadsOverQuarter": 25618,
+          "avgDailyListeners": 1026,
+          "topPlayer": "Apple Podcasts",
+          "topEpisodeTitle": "How are you voting in California's chaotic Governor's race?",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "https://www.kalw.org/show/your-call/2026-05-07/how-are-you-voting-in-californias-chaotic-governors-race",
+          "topEpisodeDownloads": 624,
+          "notes": "",
+          "thumbnailUrl": ""
+        },
+        {
+          "show": "Sights+Sounds",
+          "totalDownloadsOverQuarter": 13633,
+          "avgDailyListeners": 793,
+          "topPlayer": "NPR Apps & Skills",
+          "topEpisodeTitle": "Sights + Sounds Picks: Poet Adrienne Danyelle Oliver",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "https://www.kalw.org/show/sights-sounds/2026-05-28/sights-sounds-picks-poet-adrienne-danyelle-oliver",
+          "topEpisodeDownloads": 1381,
+          "notes": "",
+          "thumbnailUrl": ""
+        },
+        {
+          "show": "Your Legal Rights",
+          "totalDownloadsOverQuarter": 2543,
+          "avgDailyListeners": 135,
+          "topPlayer": "Web Browser",
+          "topEpisodeTitle": "When Speech Isn't Free",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "https://www.kalw.org/show/your-legal-rights/2026-06-10/when-speech-isnt-free",
+          "topEpisodeDownloads": 197,
+          "notes": "",
+          "thumbnailUrl": ""
+        },
+        {
+          "show": "State of the Bay",
+          "totalDownloadsOverQuarter": 2588,
+          "avgDailyListeners": 157,
+          "topPlayer": "Web Browser",
+          "topEpisodeTitle": "Super’ El Niño? / Great California Road Trips / Rain Gardens at Home",
+          "topEpisodeDate": "",
+          "topEpisodeUrl": "https://www.kalw.org/show/state-bay/2026-05-18/super-el-nino-great-california-road-trips-rain-gardens-at-home",
+          "topEpisodeDownloads": 201,
+          "notes": "",
+          "thumbnailUrl": ""
+        }
+      ],
+      "social": {
+        "facebook": [
+          {
+            "title": "How are you voting in California's chaotic Governor's race?",
+            "url": "https://www.facebook.com/KALWPublicMedia/posts/pfbid02d1gLp2A7ayuS6BdvGwojLYQymhttrpEPjatpVwj7MLSbY25wzussV9fr8HG7Ucjhl",
+            "showCategory": "Your Call",
+            "postType": "Photo",
+            "engagement": 4879,
+            "reach": 84676,
+            "threeSecViews": 0,
+            "views": 0,
+            "mainAccount": ""
+          },
+          {
+            "title": "This Earth Day, take in the sounds of nature.",
+            "url": "https://fb.watch/IkI4hrqImn/",
+            "showCategory": "Crosscurrents",
+            "postType": "Video (cross-posted from Instagram)",
+            "engagement": 48,
+            "reach": 779,
+            "threeSecViews": 374,
+            "views": 0,
+            "mainAccount": ""
+          },
+          {
+            "title": "Give it up for our latest Uncuffed graduates!",
+            "url": "https://www.facebook.com/KALWPublicMedia/",
+            "showCategory": "Uncuffed",
+            "postType": "Photo",
+            "engagement": 45,
+            "reach": 3757,
+            "threeSecViews": 0,
+            "views": 0,
+            "mainAccount": ""
+          },
+          {
+            "title": "The Next KALW On-Air Folk Festival Is This Saturday June 6th!!",
+            "url": "https://www.facebook.com/KALWPublicMedia/posts/pfbid0xzQ7qYo51z1uEuyCi9ucy8EeYMQG3ZKjTm1vhKUnYSmh5WSjZsj9nv8tV6YyAo4Dl",
+            "showCategory": "KALW Music",
+            "postType": "Photo",
+            "engagement": 38,
+            "reach": 457,
+            "threeSecViews": 0,
+            "views": 0,
+            "mainAccount": ""
+          },
+          {
+            "title": "Brittany Haas and Natalie Haas performing live on KALW June 6, 2026",
+            "url": "https://fb.watch/IkItos7No4/",
+            "showCategory": "KALW Music",
+            "postType": "Photo",
+            "engagement": 35,
+            "reach": 706,
+            "threeSecViews": 0,
+            "views": 0,
+            "mainAccount": ""
+          }
+        ],
+        "instagram": [
+          {
+            "title": "Out in the open, beyond the noise of everyday life, the land has a way of revealing us. ‘American Storytelling’ is a collection of podcasts from across the NPR Network",
+            "url": "https://www.instagram.com/p/DZX9n_-Doea/",
+            "showCategory": "How Wild",
+            "postType": "Photo Carousel",
+            "engagement": 1717,
+            "reach": 186384,
+            "threeSecViews": 0,
+            "views": 0,
+            "mainAccount": "npr"
+          },
+          {
+            "title": "Hundreds of people cheered as rainbow ribbons were cut at the @outmuseum in San Francisco's Chinatown last Friday",
+            "url": "https://www.instagram.com/p/DZFvMUHFMyl/",
+            "showCategory": "KALW News",
+            "postType": "Photo",
+            "engagement": 1604,
+            "reach": 10338,
+            "threeSecViews": 0,
+            "views": 17798,
+            "mainAccount": "kalwpublicmedia"
+          },
+          {
+            "title": "had a fabulous time hanging out with @kalwpublicmedia's Members and BOUNCE host @erinlimsf in downtown San Francisco!",
+            "url": "https://www.instagram.com/p/DYfLPbelP_4/",
+            "showCategory": "KALW Live Events",
+            "postType": "Photo",
+            "engagement": 1043,
+            "reach": 17550,
+            "threeSecViews": 0,
+            "views": 33473,
+            "mainAccount": "kalwpublicmedia"
+          },
+          {
+            "title": "Join our award-winning Uncuffed audio storytelling training program at California Institution for Women (CIW) in the Greater Los Angeles Area!",
+            "url": "https://www.instagram.com/p/DZNOcNyE39z/",
+            "showCategory": "Uncuffed",
+            "postType": "Photo",
+            "engagement": 906,
+            "reach": 0,
+            "threeSecViews": 0,
+            "views": 16373,
+            "mainAccount": "we.are.uncuffed"
+          },
+          {
+            "title": "KALW is hiring a Music Promotions Manager to implement its KALW Presents music program",
+            "url": "https://www.instagram.com/p/DaBgwAnH2P7/",
+            "showCategory": "KALW Music",
+            "postType": "Photo",
+            "engagement": 743,
+            "reach": 0,
+            "threeSecViews": 0,
+            "views": 14281,
+            "mainAccount": "kalwmusic"
+          }
+        ]
+      }
+    }
+  ]
+}

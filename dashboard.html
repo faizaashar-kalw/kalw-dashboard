@@ -93,7 +93,7 @@ class App extends React.Component {
 
   STORE_KEY = 'kalw_audience_metrics_v1';
   ROSTER_KEY = 'kalw_show_roster_v1';
-  DEFAULT_SHOWS = ['Crosscurrents','Your Call','Uncuffed','Sights & Sounds','The Spot'];
+  DEFAULT_SHOWS = ['Crosscurrents','Your Call','Uncuffed','Sights & Sounds'];
   trendWeeks = 13;
 
   DATA_SEED = JSON.parse('{"quarters":[{"quarter":"Q1 2026","dateRangeStart":"2026-01-01","dateRangeEnd":"2026-03-31","broadcast":{"weeklyOverallReach":112100,"engagedAudience":6500,"timeEngagedMinutes":210},"streaming":{"totalCume":77952,"engagedAudienceSeconds":1574,"methods":{"Web Player":28.7,"Mobile App":40.06,"Smart Speaker":10.06,"Other":21.19},"devices":{"Mobile":55.95,"Desktop":24.19,"Smart Speaker":19.87,"Tablet":0}},"app":{"totalUsers":3049,"totalSessions":22.84},"website":{"totalVisitors":204443,"avgSessionsPerUserSeconds":59},"audioDownloads":[{"show":"Crosscurrents","totalDownloadsOverQuarter":42228,"avgDailyListeners":1342,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""},{"show":"Uncuffed","totalDownloadsOverQuarter":0,"avgDailyListeners":0,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""},{"show":"Your Call","totalDownloadsOverQuarter":0,"avgDailyListeners":0,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""},{"show":"Sights+Sounds","totalDownloadsOverQuarter":0,"avgDailyListeners":0,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""},{"show":"Your Legal Rights","totalDownloadsOverQuarter":0,"avgDailyListeners":0,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""},{"show":"State of the Bay","totalDownloadsOverQuarter":0,"avgDailyListeners":0,"topPlayer":"","topEpisodeTitle":"Untitled episode","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":0,"notes":"","thumbnailUrl":""}],"social":{"facebook":[],"instagram":[]}},{"quarter":"Q2 2026","dateRangeStart":"2026-04-01","dateRangeEnd":"2026-06-30","broadcast":{"weeklyOverallReach":112100,"engagedAudience":6500,"timeEngagedMinutes":210},"streaming":{"totalCume":75880,"engagedAudienceSeconds":1630,"methods":{"Web Player":28.25,"Mobile App":40.22,"Smart Speaker":9.11,"Other":22.42},"devices":{"Mobile":55.5,"Desktop":24.81,"Smart Speaker":19.69,"Tablet":0}},"app":{"totalUsers":3158,"totalSessions":22.53},"website":{"totalVisitors":94891,"avgSessionsPerUserSeconds":52},"audioDownloads":[{"show":"Crosscurrents","totalDownloadsOverQuarter":40344,"avgDailyListeners":1270,"topPlayer":"Chrome","topEpisodeTitle":"“Baseball, a broken window, and an empathy lesson”","topEpisodeDate":"","topEpisodeUrl":"https://www.kalw.org/2026-04-16/baseball-a-broken-window-and-an-empathy-lesson","topEpisodeDownloads":1037,"notes":"","thumbnailUrl":""},{"show":"Uncuffed","totalDownloadsOverQuarter":18665,"avgDailyListeners":720,"topPlayer":"Unknown","topEpisodeTitle":"Get Ready for Uncuffed Season 5!","topEpisodeDate":"","topEpisodeUrl":"#","topEpisodeDownloads":5497,"notes":"","thumbnailUrl":""},{"show":"Your Call","totalDownloadsOverQuarter":25618,"avgDailyListeners":1026,"topPlayer":"Apple Podcasts","topEpisodeTitle":"How are you voting in California\'s chaotic Governor\'s race?","topEpisodeDate":"","topEpisodeUrl":"https://www.kalw.org/show/your-call/2026-05-07/how-are-you-voting-in-californias-chaotic-governors-race","topEpisodeDownloads":624,"notes":"","thumbnailUrl":""},{"show":"Sights+Sounds","totalDownloadsOverQuarter":13633,"avgDailyListeners":793,"topPlayer":"NPR Apps & Skills","topEpisodeTitle":"Sights + Sounds Picks: Poet Adrienne Danyelle Oliver","topEpisodeDate":"","topEpisodeUrl":"https://www.kalw.org/show/sights-sounds/2026-05-28/sights-sounds-picks-poet-adrienne-danyelle-oliver","topEpisodeDownloads":1381,"notes":"","thumbnailUrl":""},{"show":"Your Legal Rights","totalDownloadsOverQuarter":2543,"avgDailyListeners":135,"topPlayer":"Web Browser","topEpisodeTitle":"When Speech Isn\'t Free","topEpisodeDate":"","topEpisodeUrl":"https://www.kalw.org/show/your-legal-rights/2026-06-10/when-speech-isnt-free","topEpisodeDownloads":197,"notes":"","thumbnailUrl":""},{"show":"State of the Bay","totalDownloadsOverQuarter":2588,"avgDailyListeners":157,"topPlayer":"Web Browser","topEpisodeTitle":"Super’ El Niño? / Great California Road Trips / Rain Gardens at Home","topEpisodeDate":"","topEpisodeUrl":"https://www.kalw.org/show/state-bay/2026-05-18/super-el-nino-great-california-road-trips-rain-gardens-at-home","topEpisodeDownloads":201,"notes":"","thumbnailUrl":""}],"social":{"facebook":[{"title":"How are you voting in California\'s chaotic Governor\'s race?","url":"https://www.facebook.com/KALWPublicMedia/posts/pfbid02d1gLp2A7ayuS6BdvGwojLYQymhttrpEPjatpVwj7MLSbY25wzussV9fr8HG7Ucjhl","showCategory":"Your Call","postType":"Photo","engagement":4879,"reach":84676,"threeSecViews":0,"views":0,"mainAccount":""},{"title":"This Earth Day, take in the sounds of nature.","url":"https://fb.watch/IkI4hrqImn/","showCategory":"Crosscurrents","postType":"Video (cross-posted from Instagram)","engagement":48,"reach":779,"threeSecViews":374,"views":0,"mainAccount":""},{"title":"Give it up for our latest Uncuffed graduates!","url":"https://www.facebook.com/KALWPublicMedia/","showCategory":"Uncuffed","postType":"Photo","engagement":45,"reach":3757,"threeSecViews":0,"views":0,"mainAccount":""},{"title":"The Next KALW On-Air Folk Festival Is This Saturday June 6th!!","url":"https://www.facebook.com/KALWPublicMedia/posts/pfbid0xzQ7qYo51z1uEuyCi9ucy8EeYMQG3ZKjTm1vhKUnYSmh5WSjZsj9nv8tV6YyAo4Dl","showCategory":"KALW Music","postType":"Photo","engagement":38,"reach":457,"threeSecViews":0,"views":0,"mainAccount":""},{"title":"Brittany Haas and Natalie Haas performing live on KALW June 6, 2026","url":"https://fb.watch/IkItos7No4/","showCategory":"KALW Music","postType":"Photo","engagement":35,"reach":706,"threeSecViews":0,"views":0,"mainAccount":""}],"instagram":[{"title":"Out in the open, beyond the noise of everyday life, the land has a way of revealing us. ‘American Storytelling’ is a collection of podcasts from across the NPR Network","url":"https://www.instagram.com/p/DZX9n_-Doea/","showCategory":"How Wild","postType":"Photo Carousel","engagement":1717,"reach":186384,"threeSecViews":0,"views":0,"mainAccount":"npr"},{"title":"Hundreds of people cheered as rainbow ribbons were cut at the @outmuseum in San Francisco\'s Chinatown last Friday","url":"https://www.instagram.com/p/DZFvMUHFMyl/","showCategory":"KALW News","postType":"Photo","engagement":1604,"reach":10338,"threeSecViews":0,"views":17798,"mainAccount":"kalwpublicmedia"},{"title":"had a fabulous time hanging out with @kalwpublicmedia\'s Members and BOUNCE host @erinlimsf in downtown San Francisco!","url":"https://www.instagram.com/p/DYfLPbelP_4/","showCategory":"KALW Live Events","postType":"Photo","engagement":1043,"reach":17550,"threeSecViews":0,"views":33473,"mainAccount":"kalwpublicmedia"},{"title":"Join our award-winning Uncuffed audio storytelling training program at California Institution for Women (CIW) in the Greater Los Angeles Area!","url":"https://www.instagram.com/p/DZNOcNyE39z/","showCategory":"Uncuffed","postType":"Photo","engagement":906,"reach":0,"threeSecViews":0,"views":16373,"mainAccount":"we.are.uncuffed"},{"title":"KALW is hiring a Music Promotions Manager to implement its KALW Presents music program","url":"https://www.instagram.com/p/DaBgwAnH2P7/","showCategory":"KALW Music","postType":"Photo","engagement":743,"reach":0,"threeSecViews":0,"views":14281,"mainAccount":"kalwmusic"}]}}]}');
@@ -133,10 +133,21 @@ class App extends React.Component {
     this.triggerLoad = this.triggerLoad.bind(this);
     this.onFile = this.onFile.bind(this);
     this.download = this.download.bind(this);
+    this.publish = this.publish.bind(this);
     this.onNewShowName = this.onNewShowName.bind(this);
     this.cancelNewShow = this.cancelNewShow.bind(this);
     this.addShow = this.addShow.bind(this);
     this.saveQuarter = this.saveQuarter.bind(this);
+  }
+
+  loadPublished(){
+    if (this._saved) return;
+    fetch('./data.json', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(json){
+      if (!json || !Array.isArray(json.quarters) || !json.quarters.length) return;
+      var roster = this.state.roster.slice();
+      json.quarters.forEach(function(q){ (q.audioDownloads || []).forEach(function(e){ var n = (e.show || '').trim(); if (n && roster.indexOf(n) < 0) roster.push(n); }); });
+      this.setState({ data: json, qIndex: json.quarters.length - 1, roster: roster });
+    }.bind(this)).catch(function(){});
   }
 
   addShowToRoster(name){
@@ -361,6 +372,16 @@ class App extends React.Component {
     this.toastMsg('Exported kalw-audience-metrics.xlsx');
   }
 
+  publish(){
+    var blob = new Blob([JSON.stringify(this.state.data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'data.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.toastMsg('Downloaded data.json — upload it to the GitHub repo (replacing the old one) to publish this for everyone.');
+  }
+
   blankShow(){ return { show: '', totalDownloadsOverQuarter: '', avgDailyListeners: '', topPlayer: '', topEpisodeTitle: '', topEpisodeUrl: '', topEpisodeDownloads: '', notes: '', thumbnailUrl: '' }; }
   blankPost(){ return { title: '', url: '', showCategory: '', postType: '', engagement: '', reach: '', threeSecViews: '', views: '', mainAccount: '' }; }
   blankDraft(){
@@ -457,7 +478,7 @@ class App extends React.Component {
       this.dough('downloadsShareChart', cd.downloadsShare.values, cd.pie);
     }.bind(this));
   }
-  componentDidMount(){ this._onResize = function(){ this.drawCharts(); }.bind(this); window.addEventListener('resize', this._onResize); this.drawCharts(); }
+  componentDidMount(){ this._onResize = function(){ this.drawCharts(); }.bind(this); window.addEventListener('resize', this._onResize); this.drawCharts(); this.loadPublished(); }
   componentDidUpdate(){ this.drawCharts(); }
   componentWillUnmount(){ if (this._onResize) window.removeEventListener('resize', this._onResize); }
 
@@ -676,7 +697,9 @@ class App extends React.Component {
                   h('button', { onClick: this.triggerLoad, title: 'Import an Excel (.xlsx) file', style: pStyle("display:inline-flex;align-items:center;gap:6px;font:600 12px/1 'Libre Franklin',sans-serif;color:#4a443c;background:#ffffff;border:1px solid rgba(27,23,20,.16);padding:8px 11px;border-radius:9px") },
                     h(Icon, { paths: ['M3.5 7.5v11a1.6 1.6 0 0 0 1.6 1.6h13.8a1.6 1.6 0 0 0 1.6-1.6V9.6A1.6 1.6 0 0 0 19 8H12l-2-2.5H5A1.5 1.5 0 0 0 3.5 7Z'], size: 15, sw: 1.7 }), 'Import Excel'),
                   h('button', { onClick: this.download, title: 'Download all data as an Excel (.xlsx) file', style: pStyle("display:inline-flex;align-items:center;gap:6px;font:600 12px/1 'Libre Franklin',sans-serif;color:#4a443c;background:#ffffff;border:1px solid rgba(27,23,20,.16);padding:8px 11px;border-radius:9px") },
-                    h(Icon, { paths: ['M12 3v12','M7 10l5 5 5-5','M4 20h16'], size: 15, sw: 1.7 }), 'Export')
+                    h(Icon, { paths: ['M12 3v12','M7 10l5 5 5-5','M4 20h16'], size: 15, sw: 1.7 }), 'Export'),
+                  h('button', { onClick: this.publish, title: 'Download data.json, then upload it to the GitHub repo to make this the shared data everyone sees', style: pStyle("display:inline-flex;align-items:center;gap:6px;font:600 12px/1 'Libre Franklin',sans-serif;color:#2aa3e0;background:rgba(42,163,224,.1);border:1px solid rgba(42,163,224,.24);padding:8px 11px;border-radius:9px") },
+                    h(Icon, { paths: ['M4 21h16','M12 15V3','M7 8l5-5 5 5'], size: 15, sw: 1.7 }), 'Publish for everyone')
                 )
               )
             )
